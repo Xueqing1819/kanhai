@@ -243,6 +243,27 @@ function drawBottle(c,s){
   c.strokeStyle='rgba(200,190,160,.6)';c.lineWidth=1;c.stroke();
   c.restore();
 }
+/* 小螃蟹：沙堆里挖出来时会横着跑掉（t 是跑动时长，用来摆腿） */
+function drawCrab(c,s,t){
+  const wig=t*16;
+  c.strokeStyle='#d97757';c.lineWidth=2;c.lineCap='round';
+  for(const side of [-1,1]){
+    for(let i=0;i<3;i++){
+      const lx=side*(s*0.55+i*s*0.2);
+      const ly=s*0.4+Math.sin(wig+i*1.7+side)*s*0.1;
+      c.beginPath();c.moveTo(side*s*0.35,s*0.08);c.lineTo(lx,ly);c.stroke();
+    }
+    c.beginPath();c.moveTo(side*s*0.5,-s*0.12);c.lineTo(side*s*0.85,-s*0.38);c.stroke();
+    c.beginPath();c.arc(side*s*0.95,-s*0.46,s*0.17,0,Math.PI*2);
+    c.fillStyle='#e08a68';c.fill();
+  }
+  c.beginPath();c.ellipse(0,0,s*0.62,s*0.45,0,0,Math.PI*2);
+  c.fillStyle='#e08a68';c.fill();
+  c.strokeStyle='#c96f50';c.lineWidth=1.5;c.stroke();
+  c.fillStyle='#3d2f28';
+  c.beginPath();c.arc(-s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
+}
 const RARITY=[
   {name:'常见',color:'#9aa7ab'},
   {name:'少见',color:'#6fa8c9'},
@@ -267,6 +288,15 @@ function pickType(zone){
   });
   let r=Math.random()*total;
   for(let i=0;i<pool.length;i++){r-=ws[i];if(r<=0)return pool[i].id;}
+  return pool[0].id;
+}
+/* 沙堆挖出 / 海浪送来的物品：稀有度整体上浮一档，从少见起步抽 */
+function pickGiftType(){
+  const pool=TYPES.filter(t=>t.rarity>=1&&!t.wetOnly);
+  let total=0;
+  for(const t of pool)total+=t.weight;
+  let r=Math.random()*total;
+  for(const t of pool){r-=t.weight;if(r<=0)return t.id;}
   return pool[0].id;
 }
 function typeInfo(id){return TYPES.find(t=>t.id===id);}
@@ -329,9 +359,21 @@ function bigLift(){
 function waterlineY(){return WATER_MIN+tideLevel()*WATER_SPAN-bigLift();}
 
 /* ============================================================
+   v1.2 机制参数：
+   - 沙堆埋物：退潮时概率刷出小鼓包，点开挖一挖，三档结果
+   - 海浪送礼：涨潮等待期，海浪偶尔把一件好东西推上岸
+   ============================================================ */
+const MOUND_CHANCE=0.35;                                  // 每次退潮刷沙堆的概率
+const MOUND_ITEM=0.55,MOUND_STONE=0.30,MOUND_CRAB=0.15;   // 挖开结果：物品/石头/螃蟹
+const DELIVER_CHANCE=0.35;        // 涨潮期每次判定送出物品的概率
+const DELIVER_MIN=20,DELIVER_SPAN=20;  // 判定间隔 20~40 秒
+
+/* ============================================================
    场景数据：物品、漂流瓶、波光、特效、统计
    ============================================================ */
-let items=[],bottles=[],effects=[],sparkles=[],sparkleTimer=0.8;
+let items=[],bottles=[],mounds=[],effects=[],sparkles=[],sparkleTimer=0.8;
+let deliverAt=DELIVER_MIN+Math.random()*DELIVER_SPAN;  // 下一次海浪送礼判定时刻
+let crabSeen=0;   // 沙堆里挖出过的小螃蟹数（之后的朋友页要用）
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
 let collectedNotes=[];      // 已捡到的句子编号
 let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:''};
@@ -358,6 +400,7 @@ function loadSave(){
     if(Array.isArray(s.bottles)){
       collectedNotes=[...new Set(s.bottles)].filter(i=>Number.isInteger(i)&&i>=0&&i<SENTENCES.length);
     }
+    if(s.friends&&typeof s.friends.crab==='number')crabSeen=s.friends.crab;
     if(s.stats){
       stats.pickedTotal=s.stats.pickedTotal||0;
       stats.totalSec=s.stats.totalSec||0;
@@ -378,7 +421,7 @@ function saveGame(){
       version:1,
       counts,
       bottles:collectedNotes,
-      friends:{crab:0,dolphin:0,seagull:0},
+      friends:{crab:crabSeen,dolphin:0,seagull:0},
       decor:[],
       stats:{
         totalSec:Math.floor(stats.totalSec),
@@ -398,7 +441,8 @@ function spawnBatch(n,baseDelay,zone){
       x=70+Math.random()*(W-140);
       y=zone==='wet'?475+Math.random()*90:580+Math.random()*115;
       ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
-        &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80);
+        &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80)
+        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>80*80);
     }
     items.push({typeId:pickType(zone),x,y,alpha:0,rot:(Math.random()-0.5)*0.6,
       appearAt:timeSec+baseDelay+Math.random()*1.2,wash:false});
@@ -420,6 +464,67 @@ function pickSentence(){
   return un[Math.floor(Math.random()*un.length)];
 }
 
+/* ---------- v1.2：沙堆埋物 ---------- */
+function spawnMounds(n,baseDelay){
+  for(let i=0;i<n;i++){
+    let x=640,y=630,ok=false;
+    for(let tries=0;tries<24&&!ok;tries++){
+      x=70+Math.random()*(W-140);
+      y=580+Math.random()*115;
+      ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
+        &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80)
+        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>90*90);
+    }
+    mounds.push({x,y,alpha:0,appearAt:timeSec+baseDelay+Math.random()*1.2,
+      dug:false,digT:0,settled:false,result:null,stone:false,
+      puffT:1+Math.random()*2,crabT:0,crabDir:Math.random()<0.5?-1:1,wash:false});
+  }
+}
+/* 点击沙堆：0.5 秒挖开动画，随后按 55/30/15 结算 */
+function digMound(m){
+  const r=Math.random();
+  m.result=r<MOUND_ITEM?'item':(r<MOUND_ITEM+MOUND_STONE?'stone':'crab');
+  m.dug=true;m.digT=0;
+  for(let i=0;i<8;i++){
+    const a=Math.PI+Math.random()*Math.PI;
+    effects.push({kind:'grain',x:m.x+(Math.random()-0.5)*16,y:m.y-4,
+      vx:Math.cos(a)*(40+Math.random()*70),vy:Math.sin(a)*(60+Math.random()*90),
+      t:0,dur:0.45+Math.random()*0.2});
+  }
+}
+function settleMound(m){
+  if(m.result==='item'){
+    /* 挖出物品：少见起步，当场淡入，可以马上捡 */
+    items.push({typeId:pickGiftType(),x:m.x,y:m.y,alpha:0,
+      rot:(Math.random()-0.5)*0.6,appearAt:timeSec,wash:false});
+    const i=mounds.indexOf(m);if(i>=0)mounds.splice(i,1);
+  }else if(m.result==='stone'){
+    m.stone=true;
+    showToast('只是一块乖乖的石头');
+  }else{
+    showToast('一只小螃蟹慌慌张张地跑掉了');
+    crabSeen++;
+    saveGame();
+  }
+}
+
+/* ---------- v1.2：海浪送礼 ---------- */
+function spawnDelivery(){
+  let tx=640,ty=630,ok=false;
+  for(let tries=0;tries<24&&!ok;tries++){
+    tx=90+Math.random()*(W-180);
+    ty=580+Math.random()*115;
+    ok=items.every(it=>(it.x-tx)*(it.x-tx)+(it.y-ty)*(it.y-ty)>80*80)
+      &&bottles.every(b=>(b.x-tx)*(b.x-tx)+(b.y-ty)*(b.y-ty)>80*80)
+      &&mounds.every(m=>(m.x-tx)*(m.x-tx)+(m.y-ty)*(m.y-ty)>80*80);
+  }
+  const y0=Math.min(waterlineY()-26,ty-40);   // 从水线里随浪出来
+  const x0=tx+(Math.random()-0.5)*70;
+  items.push({typeId:pickGiftType(),x:x0,y:y0,alpha:0.9,
+    rot:(Math.random()-0.5)*0.4,appearAt:timeSec,wash:false,
+    delivery:{x0,y0,tx,ty,t:0,dur:1.5,done:false}});
+}
+
 /* ---------- 潮汐状态切换（进入/离开退潮窗口，含大退潮） ---------- */
 function checkTide(){
   const t=tideLevel();
@@ -431,6 +536,7 @@ function checkTide(){
     spawnBatch(1+Math.floor(Math.random()*2),0.3,'wet');
     spawnBatch(2+Math.floor(Math.random()*2),0.5);
     spawnBottle(0.6);
+    if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.7);
     showToast('今天退得特别远…');
   }else if(!bigTideActive&&prevTide>=LOW_TIDE_LINE&&t<LOW_TIDE_LINE){
     /* 进入普通退潮 */
@@ -438,16 +544,19 @@ function checkTide(){
     lowWindowSpawns=0;
     spawnBatch(2+Math.floor(Math.random()*3),0.2);
     if(Math.random()<0.08)spawnBottle(0.4);
+    if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.5);
   }
   if(bigTideActive&&prevTide<BIG_TIDE_LINE&&t>=BIG_TIDE_LINE){
     /* 离开大退潮窗口：涨潮把东西带走 */
     bigTideActive=false;
     for(const it of items)it.wash=true;
     for(const b of bottles)b.wash=true;
+    for(const m of mounds)m.wash=true;
   }else if(!bigTideActive&&prevTide<LOW_TIDE_LINE&&t>=LOW_TIDE_LINE){
     /* 离开普通退潮窗口 */
     for(const it of items)it.wash=true;
     for(const b of bottles)b.wash=true;
+    for(const m of mounds)m.wash=true;
   }
   prevTide=t;
 }
@@ -457,23 +566,62 @@ function update(dt){
   stats.totalSec+=dt;
   checkTide();
   const low=canCollect();
+  /* 涨潮期：海浪偶尔把一件好东西送上岸，退潮了就能捡 */
+  if(!low&&timeSec>=deliverAt){
+    deliverAt=timeSec+DELIVER_MIN+Math.random()*DELIVER_SPAN;
+    if(Math.random()<DELIVER_CHANCE)spawnDelivery();
+  }
   /* 退潮窗口里捡空了，补刷一两次 */
   if(low&&items.length===0&&lowWindowSpawns<2&&bottles.every(b=>b.wash)){
     lowWindowSpawns++;
     spawnBatch(1+Math.floor(Math.random()*2),1.0,
       bigTideActive&&Math.random()<0.5?'wet':undefined);
   }
-  /* 物品：淡入出现 / 涨潮时淡出消失 */
+  /* 物品：送礼的在 1.5 秒里随浪缓缓推上岸，其余淡入出现 / 涨潮淡出 */
   for(let i=items.length-1;i>=0;i--){
     const it=items[i];
-    if(it.wash){it.alpha-=dt*1.5;it.y+=dt*16;if(it.alpha<=0)items.splice(i,1);}
-    else if(timeSec>=it.appearAt&&it.alpha<1){it.alpha=Math.min(1,it.alpha+dt/0.9);}
+    if(it.wash){it.alpha-=dt*1.5;it.y+=dt*16;if(it.alpha<=0)items.splice(i,1);continue;}
+    if(it.delivery&&!it.delivery.done){
+      it.delivery.t+=dt;
+      const p=Math.min(1,it.delivery.t/it.delivery.dur);
+      const ease=1-Math.pow(1-p,3);
+      it.x=it.delivery.x0+(it.delivery.tx-it.delivery.x0)*ease;
+      it.y=it.delivery.y0+(it.delivery.ty-it.delivery.y0)*ease;
+      if(p>=1){
+        it.delivery.done=true;
+        effects.push({kind:'foam',x:it.x,y:it.y,t:0,dur:1.0});
+      }
+    }
+    if(timeSec>=it.appearAt&&it.alpha<1){it.alpha=Math.min(1,it.alpha+dt/0.9);}
   }
   /* 漂流瓶：同上 */
   for(let i=bottles.length-1;i>=0;i--){
     const b=bottles[i];
     if(b.wash){b.alpha-=dt*1.5;if(b.alpha<=0)bottles.splice(i,1);}
     else if(timeSec>=b.appearAt&&b.alpha<1){b.alpha=Math.min(1,b.alpha+dt/0.9);}
+  }
+  /* 沙堆：淡入 / 每两秒冒一点小沙尘 / 挖开动画结算 / 螃蟹跑走 / 涨潮带走 */
+  for(let i=mounds.length-1;i>=0;i--){
+    const m=mounds[i];
+    if(m.wash){m.alpha-=dt*1.5;if(m.alpha<=0){mounds.splice(i,1);continue;}}
+    else if(timeSec>=m.appearAt&&m.alpha<1){m.alpha=Math.min(1,m.alpha+dt/0.9);}
+    if(!m.dug&&m.alpha>0.5){
+      m.puffT-=dt;
+      if(m.puffT<=0){
+        m.puffT=2;
+        effects.push({kind:'puff',x:m.x+(Math.random()-0.5)*24,y:m.y-12,t:0,dur:0.8,
+          drift:(Math.random()-0.5)*10});
+      }
+    }
+    if(m.dug&&!m.settled){
+      m.digT+=dt;
+      if(m.digT>=0.5){m.settled=true;settleMound(m);}
+    }
+    if(m.settled&&m.result==='crab'){
+      m.crabT+=dt;
+      m.x+=m.crabDir*dt*85;
+      if(m.crabT>1.4){mounds.splice(i,1);continue;}
+    }
   }
   /* 波光：每 2~3.4 秒随机闪一次 */
   sparkleTimer-=dt;
@@ -511,9 +659,18 @@ function handleTap(x,y){
     if(!bottle){
       for(let i=items.length-1;i>=0;i--){
         const it=items[i];
-        if(it.wash||it.alpha<0.5)continue;
+        if(it.wash||it.alpha<0.5||(it.delivery&&!it.delivery.done))continue;
         const dx=x-it.x,dy=y-it.y;
         if(dx*dx+dy*dy<900){got=it;items.splice(i,1);break;}
+      }
+      /* 没点中物品：也许点的是沙堆，挖挖看 */
+      if(!got){
+        for(let i=mounds.length-1;i>=0;i--){
+          const m=mounds[i];
+          if(m.wash||m.dug||m.alpha<0.5)continue;
+          const dx=x-m.x,dy=y-m.y;
+          if(dx*dx+dy*dy<1156){digMound(m);break;}
+        }
       }
     }
   }
@@ -807,10 +964,11 @@ function draw(){
     ctx.beginPath();ctx.moveTo(-s.len/2,0);ctx.lineTo(s.len/2,0);ctx.stroke();
     ctx.restore();
   }
-  /* 沙滩上的物品（少见/稀有带缓慢呼吸的微光） */
+  /* 沙滩上的物品（少见/稀有带缓慢呼吸的微光；送礼上岸的跟一道泡沫弧） */
   for(const it of items){
     if(it.alpha<=0)continue;
     const tp=typeInfo(it.typeId);
+    const moving=it.delivery&&!it.delivery.done;
     ctx.save();
     ctx.globalAlpha=it.alpha;
     ctx.translate(it.x,it.y);
@@ -824,12 +982,23 @@ function draw(){
       ctx.fillStyle=g2;
       ctx.beginPath();ctx.arc(0,0,34,0,Math.PI*2);ctx.fill();
     }
-    ctx.save();
-    ctx.scale(1,0.35);
-    ctx.beginPath();ctx.arc(0,26,13,0,Math.PI*2);
-    ctx.fillStyle='rgba(105,85,60,0.16)';ctx.fill();
-    ctx.restore();
-    ctx.rotate(it.rot);
+    if(moving){
+      /* 随浪上岸：头顶一道弧形浪沫，还会轻轻摇晃 */
+      ctx.beginPath();
+      ctx.ellipse(0,-20,26,9,0,Math.PI*0.15,Math.PI*0.85);
+      ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2.5;ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-18+((it.delivery.t*41)%20),-24,2.5,0,Math.PI*2);
+      ctx.arc(13,-27+((it.delivery.t*33)%11),2,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fill();
+    }else{
+      ctx.save();
+      ctx.scale(1,0.35);
+      ctx.beginPath();ctx.arc(0,26,13,0,Math.PI*2);
+      ctx.fillStyle='rgba(105,85,60,0.16)';ctx.fill();
+      ctx.restore();
+    }
+    ctx.rotate(it.rot+(moving?Math.sin(it.delivery.t*5)*0.18:0));
     tp.draw(ctx,16);
     ctx.restore();
   }
@@ -847,19 +1016,81 @@ function draw(){
     drawBottle(ctx,15);
     ctx.restore();
   }
-  /* 拾取特效：一圈涟漪 + 物品飘起淡出 */
+  /* 沙堆：小鼓包（挖开时塌成坑）/ 乖乖的石头 / 跑掉的小螃蟹 */
+  for(const m of mounds){
+    if(m.alpha<=0)continue;
+    let a=m.alpha;
+    if(m.settled&&m.result==='crab'&&m.crabT>1.1)a*=Math.max(0,1-(m.crabT-1.1)/0.3);
+    ctx.save();
+    ctx.globalAlpha=a;
+    if(m.settled&&m.result==='crab'){
+      const hop=Math.abs(Math.sin(m.crabT*10))*3;
+      ctx.translate(m.x,m.y-6-hop);
+      drawCrab(ctx,13,m.crabT);
+    }else{
+      const sink=m.dug?Math.min(1,m.digT/0.5):0;
+      ctx.beginPath();ctx.ellipse(m.x,m.y+3,24,7,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(120,95,60,0.15)';ctx.fill();
+      const hgt=15*(1-sink);
+      if(hgt>1.5){
+        ctx.beginPath();
+        ctx.moveTo(m.x-22,m.y+2);
+        ctx.quadraticCurveTo(m.x-20,m.y+2-hgt*0.8,m.x-6,m.y-hgt);
+        ctx.quadraticCurveTo(m.x+9,m.y+2-hgt,m.x+16,m.y+2-hgt*0.55);
+        ctx.quadraticCurveTo(m.x+21,m.y+2-hgt*0.15,m.x+22,m.y+2);
+        ctx.closePath();
+        ctx.fillStyle='#d9c497';ctx.fill();
+        ctx.strokeStyle='rgba(150,120,75,0.35)';ctx.lineWidth=1.5;ctx.stroke();
+      }
+      if(sink>0.2){
+        ctx.beginPath();ctx.ellipse(m.x,m.y+2,20,7,0,0,Math.PI*2);
+        ctx.fillStyle='#cdb78a';ctx.fill();
+        ctx.beginPath();ctx.ellipse(m.x,m.y+1,14,4.2,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(105,85,55,'+(0.45*Math.min(1,(sink-0.2)/0.4)).toFixed(3)+')';ctx.fill();
+      }
+      if(m.stone){
+        ctx.beginPath();ctx.ellipse(m.x,m.y-3,11,8,0.15,0,Math.PI*2);
+        ctx.fillStyle='#b8b2a6';ctx.fill();
+        ctx.strokeStyle='rgba(120,113,100,0.55)';ctx.lineWidth=1.4;ctx.stroke();
+        ctx.beginPath();ctx.ellipse(m.x-3,m.y-6,4,2.4,0.4,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,255,255,0.4)';ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  /* 特效：拾取涟漪 / 物品飘起 / 送礼泡沫圈 / 沙堆的小沙尘与飞溅沙粒 */
   for(const e of effects){
     const p=e.t/e.dur;
     if(e.kind==='ring'){
       ctx.beginPath();ctx.arc(e.x,e.y,10+32*p,0,Math.PI*2);
       ctx.strokeStyle='rgba(255,255,255,'+(0.6*(1-p))+')';
       ctx.lineWidth=2.5;ctx.stroke();
-    }else{
+    }else if(e.kind==='rise'){
       ctx.save();
       ctx.globalAlpha=1-p;
       ctx.translate(e.x,e.y-48*p);
       typeDraw(e.typeId)(ctx,15);
       ctx.restore();
+    }else if(e.kind==='foam'){
+      ctx.beginPath();ctx.arc(e.x,e.y,6+42*p,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.55*(1-p))+')';
+      ctx.lineWidth=3;ctx.stroke();
+      ctx.beginPath();ctx.arc(e.x,e.y,2+24*p,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.35*(1-p))+')';
+      ctx.lineWidth=2;ctx.stroke();
+    }else if(e.kind==='puff'){
+      ctx.globalAlpha=0.5*(1-p);
+      ctx.fillStyle='#c9b183';
+      ctx.beginPath();ctx.arc(e.x+e.drift*p,e.y-12*p,1.6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(e.x+e.drift*p+4,e.y-12*p-4,1.2,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }else if(e.kind==='grain'){
+      ctx.globalAlpha=1-p;
+      ctx.fillStyle='#cdb178';
+      ctx.beginPath();
+      ctx.arc(e.x+e.vx*e.t,e.y+e.vy*e.t+130*e.t*e.t,1.8,0,Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha=1;
     }
   }
 }
@@ -902,11 +1133,15 @@ requestAnimationFrame(loop);
 /* 调试用的只读入口（也方便自己改着玩）：
    __game.skip(秒数) 可以把游戏时间往前跳，用来快速看大退潮 */
 window.__game={
-  items,bottles,counts,
+  items,bottles,mounds,counts,
   tide:tideLevel,canCollect,
   big:()=>bigTideActive,
   retreat:()=>retreatCount,
   t:()=>timeSec,
+  crabs:()=>crabSeen,
+  deliverAt:()=>deliverAt,
+  mound:(n)=>spawnMounds(n||1,0),
+  deliver:()=>spawnDelivery(),
   skip:s=>{
     const steps=Math.ceil(s/0.05);
     for(let i=0;i<steps;i++){
