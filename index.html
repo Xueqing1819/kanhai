@@ -102,6 +102,26 @@ body{
 #noteText{font-size:15px;line-height:1.8;color:#6b5f4a;text-align:center;min-height:54px;
   display:flex;align-items:center;justify-content:center}
 #noteOk{display:block;margin:12px auto 0}
+/* ---------- v1.6：集齐祝贺卡片 ---------- */
+#awardPanel{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) rotate(-1deg) scale(.72);
+  width:min(84%,440px);background:#fbf6ea;border-radius:16px;padding:22px 26px 24px;
+  pointer-events:auto;display:none;opacity:0;text-align:center;
+  transition:transform .55s cubic-bezier(.2,1.5,.4,1),opacity .45s;
+  box-shadow:0 16px 46px rgba(90,80,60,.3)}
+#awardPanel.open{display:block}
+#awardPanel.show{opacity:1;transform:translate(-50%,-50%) rotate(-1deg) scale(1)}
+#awardTitle{font-size:11px;color:#b3a789;letter-spacing:4px;text-align:center;margin-bottom:14px}
+#awardItems{display:flex;justify-content:center;gap:5px;margin-bottom:12px}
+#awardItems canvas{width:34px;height:34px;display:block}
+#awardName{font-size:26px;color:#3c6a74;font-weight:600;
+  letter-spacing:10px;text-indent:10px;margin-bottom:10px}
+#awardText{font-size:13px;color:#8a7d63;line-height:1.8;margin-bottom:14px}
+/* ---------- v1.6：图鉴物品页的称号徽章 ---------- */
+.titleRow{width:100%;text-align:center;padding:2px 0 8px;display:none}
+.titleRow span{display:inline-block;font-size:12px;color:#b08a45;
+  background:rgba(217,180,90,.14);border:1px solid rgba(217,180,90,.45);
+  border-radius:12px;padding:3px 14px;letter-spacing:2px}
 </style>
 </head>
 <body>
@@ -142,6 +162,14 @@ body{
       <div id="noteTitle">· 漂流瓶 ·</div>
       <div id="noteText"></div>
       <button class="btn" id="noteOk">收好</button>
+    </div>
+    <!-- v1.6：集齐全部物品时的祝贺卡片 -->
+    <div id="awardPanel">
+      <div id="awardTitle">· 图鉴集齐了 ·</div>
+      <div id="awardItems"></div>
+      <div id="awardName">拾海人</div>
+      <div id="awardText">七种小东西都集齐了。<br>这片海认得你了，风和浪都记得你的名字。</div>
+      <button class="btn" id="awardOk">继续看海</button>
     </div>
   </div>
 </div>
@@ -727,7 +755,7 @@ let activeTool=null;       // 当前选中的工具：mound / tower / crenel / f
 let castleToastShown=false,washToastShown=false;
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
 let collectedNotes=[];      // 已捡到的句子编号
-let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:'',castles:0,castleKinds:{}};
+let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:'',castles:0,castleKinds:{},fullBook:false};
 
 /* ============================================================
    本地存档（localStorage）：图鉴数量 / 句子 / 统计，
@@ -760,6 +788,7 @@ function loadSave(){
       stats.totalSec=s.stats.totalSec||0;
       stats.castles=s.stats.castles||0;
       if(s.stats.castleKinds)stats.castleKinds=s.stats.castleKinds;
+      stats.fullBook=!!s.stats.fullBook;   /* v1.6：图鉴集齐过的标记（弹过祝贺就不再弹） */
       const today=todayStr();
       if(s.stats.lastVisit===today){
         stats.visitDays=s.stats.visitDays||1;
@@ -785,7 +814,8 @@ function saveGame(){
         visitDays:stats.visitDays,
         lastVisit:todayStr(),
         castles:stats.castles,
-        castleKinds:stats.castleKinds
+        castleKinds:stats.castleKinds,
+        fullBook:stats.fullBook
       }
     }));
   }catch(e){/* 存不进去就算了，不影响玩 */}
@@ -907,6 +937,58 @@ function checkDecor(){
     setTimeout(()=>showToast('解锁了新装饰：'+DECOR_DEFS[id]),900);
   }
   if(news.length)saveGame();
+}
+/* ---------- v1.6：图鉴集齐祝贺（七种小东西都点亮，海送你一个称号） ---------- */
+const awardPanel=document.getElementById('awardPanel');
+const awardOkEl=document.getElementById('awardOk');
+let awardOpen=false,awardPending=false;
+(function buildAwardItems(){
+  const box=document.getElementById('awardItems');
+  for(const t of TYPES){
+    const c=document.createElement('canvas');c.width=68;c.height=68;
+    const g=c.getContext('2d');
+    g.setTransform(2,0,0,2,0,0);g.translate(17,17);
+    t.draw(g,13);
+    box.appendChild(c);
+  }
+})();
+function checkFullBook(){
+  if(stats.fullBook)return;
+  if(!TYPES.every(t=>counts[t.id]>0))return;
+  stats.fullBook=true;
+  saveGame();
+  awardPending=true;
+  setTimeout(openAward,900);   /* 等捡起的那句 toast 先说完话 */
+}
+function openAward(){
+  if(!awardPending)return;
+  if(noteOpen||bookOpen){setTimeout(openAward,1500);return;}   /* 不跟纸条、图鉴抢屏 */
+  awardPending=false;awardOpen=true;
+  awardPanel.classList.add('open');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>awardPanel.classList.add('show')));
+  playFanfare();
+}
+function closeAward(){
+  awardOpen=false;
+  awardPanel.classList.remove('show');
+  setTimeout(()=>awardPanel.classList.remove('open'),500);
+}
+awardOkEl.addEventListener('click',closeAward);
+function playFanfare(){
+  /* 三声小小的上行琶音（C5-E5-G5），跟「叮」一样是合成的 */
+  if(!audioCtx||muted)return;
+  try{
+    [523.25,659.25,783.99].forEach((f,i)=>{
+      const t=audioCtx.currentTime+i*0.14;
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.11,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+      o.connect(g);g.connect(audioCtx.destination);
+      o.start(t);o.stop(t+0.65);
+    });
+  }catch(e){}
 }
 /* 装饰解锁后的淡入进度（0~1，2 秒显形） */
 function decA(id){return Math.min(1,(decorAge[id]===undefined?2:decorAge[id])/2);}
@@ -1154,6 +1236,7 @@ function update(dt){
 let lastHint=-9;
 let noteOpen=false,bookOpen=false;
 function handleTap(x,y){
+  if(awardOpen){closeAward();return;}   /* v1.6：祝贺卡片开着时，点画布也是收起 */
   if(noteOpen){closeNote();return;}
   if(bookOpen){closeBook();return;}
   let got=null,bottle=null;
@@ -1199,6 +1282,7 @@ function handleTap(x,y){
     refreshBook();
     saveGame();
     checkDecor();   // v1.3：看看是不是凑齐了哪套装
+    checkFullBook();   // v1.6：也许这一下正好集齐了图鉴
     return;
   }
   /* v1.4：没点中别的，也许吓到了正在横行的小螃蟹 */
@@ -1288,7 +1372,11 @@ const tabFriendsEl=document.getElementById('tabFriends');
 const friendListEl=document.getElementById('friendList');
 let activeTab='items';
 const entries={};
+const titleRowEl=document.createElement('div');   /* v1.6：集齐后的称号徽章 */
+titleRowEl.className='titleRow';
+titleRowEl.innerHTML='<span>称号 · 拾海人</span>';
 (function buildBook(){
+  bookListEl.append(titleRowEl);
   const rows=[0,1,2].map(r=>{
     const row=document.createElement('div');row.className='rarityRow';
     const head=document.createElement('div');head.className='rarityHead';
@@ -1336,6 +1424,7 @@ function refreshBook(){
     }
   }
   miniCountEl.textContent=lit+'/'+TYPES.length;
+  titleRowEl.style.display=(stats.fullBook&&lit===TYPES.length)?'block':'none';
   if(activeTab==='items')bookCountEl.textContent=lit+'/'+TYPES.length;
   else if(activeTab==='notes')bookCountEl.textContent=collectedNotes.length+'/'+SENTENCES.length;
   else bookCountEl.textContent='';
@@ -1998,6 +2087,7 @@ function loop(ts){
 loadSave();
 refreshBook();
 window.addEventListener('pagehide',saveGame);
+setTimeout(checkFullBook,2500);   /* v1.6：老档已经集齐但没领过称号的，进门补上 */
 if(stats.visitDays>1)setTimeout(()=>showToast('第 '+stats.visitDays+' 次来看海'),600);
 setTimeout(()=>showToast('退潮的时候，可以在沙滩上捡贝壳哦~'),1900);
 requestAnimationFrame(loop);
@@ -2023,6 +2113,8 @@ window.__game={
   critters,boats,castles,
   tool:()=>activeTool,
   setTool:t=>{activeTool=t;},
+  fullBook:()=>stats.fullBook,
+  fullCheck:checkFullBook,
   gull:()=>spawnGull(),
   crabWalk:()=>spawnCrabWalk(),
   dolphin:()=>spawnDolphin(),
