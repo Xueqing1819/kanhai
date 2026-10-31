@@ -43,6 +43,13 @@ body{
 #bookBtn span{font-size:12px;color:#8fb0b5;margin-left:4px}
 #muteBtn{position:absolute;bottom:12px;right:12px;width:40px;height:40px;border-radius:50%;
   font-size:17px;padding:0;line-height:1}
+/* ---------- v1.5：堆沙堡工具条（左下角，和右下角静音钮呼应） ---------- */
+#toolBox{position:absolute;bottom:12px;left:12px;display:flex;gap:8px;pointer-events:auto}
+#toolBox .btn{width:40px;height:40px;border-radius:50%;padding:0;line-height:1;
+  display:flex;align-items:center;justify-content:center}
+#toolBox canvas{width:24px;height:24px;display:block}
+#toolBox .btn.on{background:#7db4bd;color:#fff;box-shadow:0 0 0 3px rgba(125,180,189,.25)}
+#toolBox.dim .btn{opacity:.38}
 #toast{position:absolute;left:50%;bottom:29%;transform:translateX(-50%);
   background:rgba(255,255,255,.78);color:#5a8189;padding:7px 18px;border-radius:17px;
   font-size:14px;opacity:0;transition:opacity .45s;white-space:nowrap;pointer-events:none}
@@ -108,6 +115,12 @@ body{
     </div>
     <button class="btn" id="bookBtn">图鉴<span id="miniCount">0/7</span></button>
     <button class="btn" id="muteBtn">🔊</button>
+    <div id="toolBox">
+      <button class="btn" data-tool="mound" title="铲子：堆一个沙堆"></button>
+      <button class="btn" data-tool="tower" title="小桶：扣一座圆塔"></button>
+      <button class="btn" data-tool="crenel" title="模具：扣一座垛口塔"></button>
+      <button class="btn" data-tool="flag" title="旗子：插在塔顶"></button>
+    </div>
     <div id="toast"></div>
     <div id="bookPanel">
       <div id="bookHead">
@@ -341,6 +354,89 @@ function drawSailboat(c,s,night,lampA){
     c.fillStyle='rgba(255,222,150,'+lampA.toFixed(3)+')';
     c.beginPath();c.arc(s*0.45,-s*0.1,s*0.17,0,Math.PI*2);c.fill();
   }
+}
+/* ---------- v1.5：沙堡组件的画法（锚点在组件底部中心，向上生长） ---------- */
+function drawCastleMound(c,s,sand,edge){   /* 铲子堆的沙堆底座 */
+  c.fillStyle=sand;
+  c.beginPath();c.ellipse(0,0,s*1.3,s*0.55,0,Math.PI,0);c.closePath();c.fill();
+  c.strokeStyle=edge;c.lineWidth=1.4;c.stroke();
+  c.beginPath();c.ellipse(0,0,s*0.82,s*0.34,0,Math.PI,0);
+  c.strokeStyle='rgba(150,120,80,.35)';c.lineWidth=1.1;c.stroke();
+}
+function drawTower(c,s,sand,edge){         /* 小桶扣出来的圆塔 */
+  c.fillStyle=sand;
+  c.beginPath();
+  c.moveTo(-s*0.5,0);c.lineTo(-s*0.36,-s*1.9);
+  c.lineTo(s*0.36,-s*1.9);c.lineTo(s*0.5,0);c.closePath();c.fill();
+  c.strokeStyle=edge;c.lineWidth=1.4;c.stroke();
+  c.fillStyle=edge;                        /* 顶檐：一圈略宽的边 */
+  c.fillRect(-s*0.52,-s*2.06,s*1.04,s*0.24);
+  c.strokeStyle='rgba(150,120,80,.35)';c.lineWidth=1.1;
+  c.beginPath();c.moveTo(-s*0.44,-s*0.62);c.lineTo(s*0.44,-s*0.62);c.stroke();
+  c.beginPath();c.moveTo(-s*0.41,-s*1.24);c.lineTo(s*0.41,-s*1.24);c.stroke();
+}
+function drawCrenel(c,s,sand,edge){        /* 模具扣出来的垛口塔 */
+  c.fillStyle=sand;
+  c.fillRect(-s*0.48,-s*1.66,s*0.96,s*1.66);
+  c.strokeStyle=edge;c.lineWidth=1.4;c.strokeRect(-s*0.48,-s*1.66,s*0.96,s*1.66);
+  for(let i=0;i<3;i++){                    /* 三个三角齿垛口 */
+    const bx=-s*0.48+i*s*0.34;
+    c.beginPath();
+    c.moveTo(bx,-s*1.66);c.lineTo(bx+s*0.15,-s*1.98);c.lineTo(bx+s*0.3,-s*1.66);
+    c.closePath();c.fillStyle=sand;c.fill();c.strokeStyle=edge;c.lineWidth=1.2;c.stroke();
+  }
+  c.strokeStyle='rgba(150,120,80,.35)';c.lineWidth=1.1;
+  c.beginPath();c.moveTo(-s*0.48,-s*0.55);c.lineTo(s*0.48,-s*0.55);c.stroke();
+  c.beginPath();c.moveTo(-s*0.48,-s*1.1);c.lineTo(s*0.48,-s*1.1);c.stroke();
+  c.beginPath();c.moveTo(0,-s*0.55);c.lineTo(0,-s*1.1);c.stroke();
+}
+function drawFlagDeco(c,s){                /* 插在塔顶的小旗 */
+  c.strokeStyle='#7a6a55';c.lineWidth=1.6;c.lineCap='round';
+  c.beginPath();c.moveTo(0,0);c.lineTo(0,-s*1.7);c.stroke();
+  c.fillStyle='#e2766a';
+  c.beginPath();c.moveTo(0,-s*1.7);c.lineTo(s*1.15,-s*1.32);c.lineTo(0,-s*0.94);
+  c.closePath();c.fill();
+}
+/* v1.5 工具条的小图标（画在按钮里的 canvas 上） */
+function drawShovelIcon(c,s){
+  c.save();c.rotate(0.6);
+  c.strokeStyle='#8a6f4d';c.lineWidth=s*0.16;c.lineCap='round';
+  c.beginPath();c.moveTo(-s*0.25,-s*0.85);c.lineTo(s*0.25,s*0.1);c.stroke();
+  c.fillStyle='#b9c4c6';
+  c.beginPath();
+  c.moveTo(s*0.14,s*0.02);c.lineTo(s*0.5,s*0.06);
+  c.quadraticCurveTo(s*0.62,s*0.6,s*0.06,s*0.72);
+  c.quadraticCurveTo(-s*0.1,s*0.4,s*0.14,s*0.02);
+  c.closePath();c.fill();
+  c.strokeStyle='#93a2a5';c.lineWidth=1;c.stroke();
+  c.restore();
+}
+function drawBucketIcon(c,s){
+  c.strokeStyle='#c9856f';c.lineWidth=s*0.13;c.lineCap='round';
+  c.beginPath();c.arc(0,-s*0.28,s*0.42,Math.PI*1.15,Math.PI*1.85);c.stroke();  /* 提手 */
+  c.fillStyle='#e2917a';
+  c.beginPath();
+  c.moveTo(-s*0.52,-s*0.3);c.lineTo(-s*0.38,s*0.62);
+  c.lineTo(s*0.38,s*0.62);c.lineTo(s*0.52,-s*0.3);c.closePath();c.fill();
+  c.strokeStyle='#c9856f';c.lineWidth=1.2;c.stroke();
+  c.fillStyle='rgba(255,255,255,.35)';
+  c.fillRect(-s*0.3,-s*0.16,s*0.16,s*0.62);
+}
+function drawMoldIcon(c,s){
+  drawCrenel(c,s*0.52,'#e8d5ac','#b99d72');
+}
+function drawFlagIcon(c,s){
+  drawFlagDeco(c,s*0.6);
+}
+/* v1.5 装饰「小桶和铲子」：靠在右下角礁石边，是来过海边的痕迹 */
+function drawToys(){
+  ctx.save();
+  ctx.translate(1075,652);
+  ctx.strokeStyle='rgba(90,80,60,.25)';ctx.lineWidth=6;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-14,4);ctx.lineTo(20,4);ctx.stroke();   /* 影子 */
+  ctx.save();ctx.rotate(-0.35);ctx.translate(6,0);drawBucketIcon(ctx,15);ctx.restore();
+  ctx.save();ctx.rotate(0.25);ctx.translate(-16,-2);drawShovelIcon(ctx,17);ctx.restore();
+  ctx.restore();
 }
 
 /* ---------- v1.3：沙滩装饰的画法（纯 Canvas 几何，纯视觉） ---------- */
@@ -611,7 +707,7 @@ let deliverAt=DELIVER_MIN+Math.random()*DELIVER_SPAN;  // 下一次海浪送礼�
 let crabSeen=0;   // 沙堆里挖出过的小螃蟹数（之后的朋友页要用）
 let dolphinSeen=0;  // 遇到海豚的次数（海豚机制之后的版本上线）
 /* v1.3 装饰：图鉴凑齐套装后出现在沙滩上（纯视觉，不挡路） */
-const DECOR_DEFS={chime:'贝壳风铃',light:'一盏小灯',umbrella:'岸边的伞'};
+const DECOR_DEFS={chime:'贝壳风铃',light:'一盏小灯',umbrella:'岸边的伞',toys:'小桶和铲子'};
 let decorUnlocked=[];
 let decorAge={};   // 每件装饰解锁后的淡入计时
 /* v1.4 小生物：海鸥、螃蟹、海豚，全是氛围，不构成任务 */
@@ -622,9 +718,16 @@ let critters=[];
 let seagullSeen=0;
 let gullTimer=GULL_MIN+Math.random()*GULL_SPAN;
 let dolphinTimer=DOLPHIN_MIN+Math.random()*DOLPHIN_SPAN;
+/* v1.5 堆沙堡：湿沙正好堆城堡，涨潮了海会把它收走 */
+const CASTLE_MAX=12,CASTLE_GAP=18,FLAG_SNAP=24;   // 同屏上限 / 组件间距 / 旗子吸附半径
+const CASTLE_WASH_DUR=3,CASTLE_GROW=0.6,CASTLE_CRAB=0.12;
+const CASTLE_HOST_H={mound:10,tower:32,crenel:27}; // 旗子要插在塔顶：各组件的大致高度
+let castles=[];            // 场上的沙堡组件（不进存档，会被潮水收走）
+let activeTool=null;       // 当前选中的工具：mound / tower / crenel / flag
+let castleToastShown=false,washToastShown=false;
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
 let collectedNotes=[];      // 已捡到的句子编号
-let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:''};
+let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:'',castles:0,castleKinds:{}};
 
 /* ============================================================
    本地存档（localStorage）：图鉴数量 / 句子 / 统计，
@@ -655,6 +758,8 @@ function loadSave(){
     if(s.stats){
       stats.pickedTotal=s.stats.pickedTotal||0;
       stats.totalSec=s.stats.totalSec||0;
+      stats.castles=s.stats.castles||0;
+      if(s.stats.castleKinds)stats.castleKinds=s.stats.castleKinds;
       const today=todayStr();
       if(s.stats.lastVisit===today){
         stats.visitDays=s.stats.visitDays||1;
@@ -678,7 +783,9 @@ function saveGame(){
         totalSec:Math.floor(stats.totalSec),
         pickedTotal:stats.pickedTotal,
         visitDays:stats.visitDays,
-        lastVisit:todayStr()
+        lastVisit:todayStr(),
+        castles:stats.castles,
+        castleKinds:stats.castleKinds
       }
     }));
   }catch(e){/* 存不进去就算了，不影响玩 */}
@@ -790,6 +897,9 @@ function checkDecor(){
     &&counts.scallop>0&&counts.clam>0&&counts.conch>0&&counts.moon>0)news.push('chime');
   if(!decorUnlocked.includes('light')&&counts.glass>=5)news.push('light');
   if(!decorUnlocked.includes('umbrella')&&TYPES.every(t=>counts[t.id]>0))news.push('umbrella');
+  if(!decorUnlocked.includes('toys')   /* v1.5 小小建筑师：四种沙堡组件都堆过 */
+    &&stats.castleKinds.mound&&stats.castleKinds.tower
+    &&stats.castleKinds.crenel&&stats.castleKinds.flag)news.push('toys');
   for(const id of news){
     decorUnlocked.push(id);
     decorAge[id]=0;
@@ -804,6 +914,7 @@ function decA(id){return Math.min(1,(decorAge[id]===undefined?2:decorAge[id])/2)
 function decorFree(x,y){
   if(decorUnlocked.includes('umbrella')&&(x-1148)*(x-1148)+(y-600)*(y-600)<75*75)return false;
   if(decorUnlocked.includes('light')&&(x-1158)*(x-1158)+(y-640)*(y-640)<55*55)return false;
+  if(decorUnlocked.includes('toys')&&(x-1075)*(x-1075)+(y-652)*(y-652)<45*45)return false;
   return true;
 }
 
@@ -835,6 +946,25 @@ function spawnDolphin(){
 }
 
 /* ---------- 潮汐状态切换（进入/离开退潮窗口，含大退潮） ---------- */
+function hintCastle(){
+  /* v1.5：第一次退潮时轻声提一句可以堆城堡（每次会话只提醒一次） */
+  if(castleToastShown)return;
+  castleToastShown=true;
+  setTimeout(()=>showToast('湿湿的沙子正好堆城堡~'),1400);
+}
+function washCastles(){
+  /* v1.5：涨潮了，海开始收走城堡——离水线越近的越先被冲 */
+  const wl=waterlineY();
+  for(const c of castles){
+    if(c.wash)continue;
+    c.wash=true;
+    c.washT=-Math.max(0,c.y-wl)/120*2;   /* 负的 washT 是错峰延迟 */
+  }
+  if(castles.length&&!washToastShown){
+    washToastShown=true;
+    showToast('海把城堡收走了，它很喜欢');
+  }
+}
 function checkTide(){
   const t=tideLevel();
   if(!bigTideActive&&prevTide>=BIG_TIDE_LINE&&t<BIG_TIDE_LINE&&nextIsBig()){
@@ -848,6 +978,7 @@ function checkTide(){
     if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.7);
     if(Math.random()<CRAB_WALK_CHANCE)spawnCrabWalk();
     showToast('今天退得特别远…');
+    hintCastle();
   }else if(!bigTideActive&&prevTide>=LOW_TIDE_LINE&&t<LOW_TIDE_LINE){
     /* 进入普通退潮 */
     retreatCount++;
@@ -856,6 +987,7 @@ function checkTide(){
     if(Math.random()<0.08)spawnBottle(0.4);
     if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.5);
     if(Math.random()<CRAB_WALK_CHANCE)spawnCrabWalk();
+    hintCastle();
   }
   if(bigTideActive&&prevTide<BIG_TIDE_LINE&&t>=BIG_TIDE_LINE){
     /* 离开大退潮窗口：涨潮把东西带走 */
@@ -863,11 +995,13 @@ function checkTide(){
     for(const it of items)it.wash=true;
     for(const b of bottles)b.wash=true;
     for(const m of mounds)m.wash=true;
+    washCastles();
   }else if(!bigTideActive&&prevTide<LOW_TIDE_LINE&&t>=LOW_TIDE_LINE){
     /* 离开普通退潮窗口 */
     for(const it of items)it.wash=true;
     for(const b of bottles)b.wash=true;
     for(const m of mounds)m.wash=true;
+    washCastles();
   }
   prevTide=t;
 }
@@ -963,12 +1097,27 @@ function update(dt){
   effects=effects.filter(e=>e.t<e.dur);
   /* v1.3：新装饰解锁后 2 秒里慢慢显形 */
   for(const id in decorAge){if(decorAge[id]<2)decorAge[id]+=dt;}
+  /* v1.5：沙堡——从沙里慢慢长出来；被海冲平时可能钻出一只小螃蟹 */
+  for(let i=castles.length-1;i>=0;i--){
+    const c=castles[i];
+    if(c.wash){
+      c.washT+=dt;
+      if(c.washT>=CASTLE_WASH_DUR){
+        if(Math.random()<CASTLE_CRAB)spawnCrabWalk();   /* 城堡有时候是小螃蟹临时的家 */
+        effects.push({kind:'stain',x:c.x,y:c.y,t:0,dur:10});
+        castles.splice(i,1);
+      }
+    }else{
+      c.grow=Math.min(1,c.grow+dt/CASTLE_GROW);
+    }
+  }
   /* 远景帆船：慢得几乎看不出在动，漂出画面就从另一侧回来 */
   for(const b of boats){
     b.x+=b.dir*b.sp*dt;
     if(b.x<-36){b.x=W+34;b.y=264+Math.random()*12;}
     else if(b.x>W+36){b.x=-34;b.y=264+Math.random()*12;}
   }
+  refreshToolBox();   /* v1.5：涨潮时工具条置灰 */
   /* v1.4：小生物——海鸥按点路过，海豚守着自己的钟，螃蟹走完这一段沙滩 */
   gullTimer-=dt;
   if(gullTimer<=0){gullTimer=GULL_MIN+Math.random()*GULL_SPAN;spawnGull();}
@@ -1061,6 +1210,47 @@ function handleTap(x,y){
       showToast('小螃蟹钻进沙里躲起来了');
       return;
     }
+  }
+  /* v1.5：手里有工具就堆一件沙堡（物品判定优先，不耽误捡贝壳） */
+  if(activeTool&&canCollect()&&y>waterlineY()+14&&y<702){
+    if(castles.length>=CASTLE_MAX){
+      showToast('沙滩上已经摆不下啦，等海来收走一些');
+    }else if(!decorFree(x,y)){
+      showToast('这里要摆别的东西哦');
+    }else if(activeTool==='flag'){
+      /* 旗子要插在塔或沙堆上：找落点附近最近的一件 */
+      let host=null,best=FLAG_SNAP*FLAG_SNAP;
+      for(const t of castles){
+        if(t.kind==='flag'||t.wash)continue;
+        const dx=x-t.x,dy=y-t.y,d2=dx*dx+dy*dy;
+        if(d2<best){best=d2;host=t;}
+      }
+      if(!host)showToast('先把塔堆起来，旗子才有地方插呀');
+      else{
+        const fy=host.y-CASTLE_HOST_H[host.kind];
+        castles.push({kind:'flag',x:host.x,y:fy,grow:0,wash:false,washT:0});
+        stats.castles++;stats.castleKinds.flag=true;
+        playSand();
+        effects.push({kind:'ring',x:host.x,y:fy,t:0,dur:0.5});
+        saveGame();checkDecor();
+      }
+    }else{
+      let near=false;
+      for(const t of castles){
+        if(t.wash)continue;
+        const dx=x-t.x,dy=y-t.y;
+        if(dx*dx+dy*dy<CASTLE_GAP*CASTLE_GAP){near=true;break;}
+      }
+      if(near)showToast('这里已经有一座啦');
+      else{
+        castles.push({kind:activeTool,x,y,grow:0,wash:false,washT:0});
+        stats.castles++;stats.castleKinds[activeTool]=true;
+        playSand();
+        effects.push({kind:'ring',x,y,t:0,dur:0.5});
+        saveGame();checkDecor();
+      }
+    }
+    return;
   }
   if(y>waterlineY()+6&&!canCollect()&&timeSec-lastHint>2){
     lastHint=timeSec;
@@ -1173,6 +1363,7 @@ function refreshDiary(){
     ['一共捡到',total+' 件小东西'],
     ['漂流瓶句子',collectedNotes.length+' / '+SENTENCES.length+' 句'],
     ['遇到海豚',dolphinSeen>0?dolphinSeen+' 次':'还没遇见过'],
+    ['在沙滩上堆过',stats.castles+' 件小工程'],
     ['连续来看海',stats.visitDays+' 天']
   ];
   for(const r of rows){
@@ -1242,6 +1433,34 @@ tabItemsEl.addEventListener('click',()=>switchTab('items'));
 tabNotesEl.addEventListener('click',()=>switchTab('notes'));
 tabDiaryEl.addEventListener('click',()=>switchTab('diary'));
 tabFriendsEl.addEventListener('click',()=>switchTab('friends'));
+
+/* ---------- v1.5：堆沙堡工具条（点选切换，再点一次收起） ---------- */
+const toolBoxEl=document.getElementById('toolBox');
+const TOOL_ICONS={mound:drawShovelIcon,tower:drawBucketIcon,crenel:drawMoldIcon,flag:drawFlagIcon};
+for(const btn of toolBoxEl.querySelectorAll('button')){
+  const kind=btn.dataset.tool;
+  const dpr=window.devicePixelRatio||1;
+  const cv=document.createElement('canvas');
+  cv.width=Math.round(48*dpr);cv.height=Math.round(48*dpr);
+  const g=cv.getContext('2d');
+  g.setTransform(48*dpr/24,0,0,48*dpr/24,24*dpr,12*dpr);
+  TOOL_ICONS[kind](g,9);
+  btn.appendChild(cv);
+  btn.addEventListener('click',()=>{
+    activeTool=(activeTool===kind)?null:kind;
+    for(const b of toolBoxEl.querySelectorAll('button'))
+      b.classList.toggle('on',b.dataset.tool===activeTool);
+    if(activeTool)showToast('点击退潮后的沙滩试试~');
+  });
+}
+let toolDimState=null;   /* 涨潮时工具条置灰，避免每帧改 DOM */
+function refreshToolBox(){
+  const dim=!canCollect();
+  if(dim!==toolDimState){
+    toolDimState=dim;
+    toolBoxEl.classList.toggle('dim',dim);
+  }
+}
 
 /* ---------- 漂流瓶纸条 ---------- */
 const notePanel=document.getElementById('notePanel');
@@ -1334,6 +1553,24 @@ function playSplash(){
     filt.frequency.exponentialRampToValueAtTime(300,audioCtx.currentTime+dur);
     const g=audioCtx.createGain();
     g.gain.setValueAtTime(0.4,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+dur);
+    src.connect(filt);filt.connect(g);g.connect(audioCtx.destination);
+    src.start();
+  }catch(e){}
+}
+function playSand(){
+  /* v1.5：堆沙堡时那一小声沙沙——带通白噪，很短很轻 */
+  if(!audioCtx||muted)return;
+  try{
+    const dur=0.22;
+    const buf=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*dur),audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.2);
+    const src=audioCtx.createBufferSource();src.buffer=buf;
+    const filt=audioCtx.createBiquadFilter();
+    filt.type='bandpass';filt.frequency.value=2600;filt.Q.value=0.8;
+    const g=audioCtx.createGain();
+    g.gain.setValueAtTime(0.22,audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+dur);
     src.connect(filt);filt.connect(g);g.connect(audioCtx.destination);
     src.start();
@@ -1485,7 +1722,29 @@ function draw(){
     if(id==='chime')drawChime();
     else if(id==='light')drawLight();
     else if(id==='umbrella')drawUmbrella();
+    else if(id==='toys')drawToys();
     ctx.restore();
+  }
+  /* v1.5：沙堡——长出来时从沙里一点点冒头，被冲平时慢慢变矮变淡 */
+  for(const c of castles){
+    const gw=c.wash?1:smooth01(c.grow);
+    const wp=c.wash?Math.max(0,c.washT)/CASTLE_WASH_DUR:0;
+    const ws=1-wp;
+    ctx.save();
+    ctx.translate(c.x,c.y+(1-gw*ws)*3);
+    ctx.scale(1,Math.max(0.03,gw*ws));
+    ctx.globalAlpha=c.wash?Math.max(0,1-wp*0.75):1;
+    if(c.kind==='mound')drawCastleMound(ctx,11,P.sand2,'rgba(150,118,78,.7)');
+    else if(c.kind==='tower')drawTower(ctx,11,P.sand2,'rgba(150,118,78,.7)');
+    else if(c.kind==='crenel')drawCrenel(ctx,11,P.sand2,'rgba(150,118,78,.7)');
+    else drawFlagDeco(ctx,10);
+    ctx.restore();
+    if(c.wash&&c.washT>0){   /* 正在被冲：脚边一圈白色的浪花泡沫 */
+      ctx.beginPath();
+      ctx.ellipse(c.x,c.y,16,4,0,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.5*Math.min(1,c.washT*2)*ws).toFixed(3)+')';
+      ctx.lineWidth=2;ctx.stroke();
+    }
   }
   /* v1.4：小生物（海鸥飞过天空，海豚跃出海面，螃蟹横穿沙滩） */
   for(const c of critters){
@@ -1664,6 +1923,10 @@ function draw(){
       ctx.translate(e.x,e.y-48*p);
       typeDraw(e.typeId)(ctx,15);
       ctx.restore();
+    }else if(e.kind==='stain'){
+      /* v1.5：城堡被收走后留下的一摊湿沙痕，慢慢淡掉 */
+      ctx.fillStyle='rgba(105,120,130,'+(0.3*(1-p)).toFixed(3)+')';
+      ctx.beginPath();ctx.ellipse(e.x,e.y,15,5,0,0,Math.PI*2);ctx.fill();
     }else if(e.kind==='foam'){
       ctx.beginPath();ctx.arc(e.x,e.y,6+42*p,0,Math.PI*2);
       ctx.strokeStyle='rgba(255,255,255,'+(0.55*(1-p))+')';
@@ -1757,7 +2020,9 @@ window.__game={
   decor:()=>[...decorUnlocked],
   check:checkDecor,
   pick:pickType,
-  critters,boats,
+  critters,boats,castles,
+  tool:()=>activeTool,
+  setTool:t=>{activeTool=t;},
   gull:()=>spawnGull(),
   crabWalk:()=>spawnCrabWalk(),
   dolphin:()=>spawnDolphin(),
