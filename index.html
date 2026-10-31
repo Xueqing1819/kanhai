@@ -315,6 +315,33 @@ function drawDolphin(c,s){
   c.fillStyle='#2e4652';
   c.beginPath();c.arc(s*0.72,-s*0.12,s*0.07,0,Math.PI*2);c.fill();
 }
+function drawSailboat(c,s,night,lampA){
+  /* 远景的帆船：小船身 + 两片白帆，夜里点一盏暖黄的灯 */
+  const hull=[Math.round(62+(34-62)*night),Math.round(88+(52-88)*night),Math.round(102+(63-102)*night)];
+  const sail=[Math.round(246+(157-246)*night),Math.round(248+(176-248)*night),Math.round(248+(186-248)*night)];
+  c.strokeStyle='rgb('+hull.join(',')+')';c.lineWidth=Math.max(1.4,s*0.18);c.lineCap='round';
+  c.beginPath();c.moveTo(-s*1.1,0);c.quadraticCurveTo(0,s*0.42,s*1.1,0);c.stroke();   /* 船身 */
+  c.beginPath();c.moveTo(-s*0.15,0);c.lineTo(-s*0.15,-s*1.5);c.stroke();              /* 桅杆 */
+  c.fillStyle='rgb('+sail.join(',')+')';
+  c.beginPath();                                                                       /* 主帆 */
+  c.moveTo(-s*0.12,-s*1.45);
+  c.lineTo(s*0.95,-s*0.18);
+  c.quadraticCurveTo(s*0.3,-s*0.1,-s*0.12,-s*0.25);
+  c.closePath();c.fill();
+  c.globalAlpha=0.85;                                                                  /* 前帆小一点 */
+  c.beginPath();
+  c.moveTo(-s*0.18,-s*1.2);
+  c.lineTo(-s*0.95,-s*0.2);
+  c.quadraticCurveTo(-s*0.5,-s*0.12,-s*0.18,-s*0.3);
+  c.closePath();c.fill();
+  c.globalAlpha=1;
+  if(lampA>0.02){                                                                      /* 夜里船身亮一盏小灯 */
+    c.fillStyle='rgba(255,214,130,'+(lampA*0.3).toFixed(3)+')';
+    c.beginPath();c.arc(s*0.45,-s*0.1,s*0.7,0,Math.PI*2);c.fill();
+    c.fillStyle='rgba(255,222,150,'+lampA.toFixed(3)+')';
+    c.beginPath();c.arc(s*0.45,-s*0.1,s*0.17,0,Math.PI*2);c.fill();
+  }
+}
 
 /* ---------- v1.3：沙滩装饰的画法（纯 Canvas 几何，纯视觉） ---------- */
 function drawChime(){
@@ -567,6 +594,13 @@ const stars=[];
 for(let i=0;i<12;i++){
   stars.push({x:40+Math.random()*(W-80),y:16+Math.random()*(HORIZON-70),
     r:0.8+Math.random()*0.9,ph:Math.random()*6.28});
+}
+/* 远景的帆船：常驻一两艘，贴着海天交界线慢慢漂 */
+let boats=[];
+for(let i=0;i<(Math.random()<0.5?1:2);i++){
+  boats.push({x:80+Math.random()*(W-160),y:264+Math.random()*12,
+    dir:Math.random()<0.5?-1:1,sp:2.5+Math.random()*2.5,
+    s:7+Math.random()*3,ph:Math.random()*6.28});
 }
 
 /* ============================================================
@@ -929,6 +963,12 @@ function update(dt){
   effects=effects.filter(e=>e.t<e.dur);
   /* v1.3：新装饰解锁后 2 秒里慢慢显形 */
   for(const id in decorAge){if(decorAge[id]<2)decorAge[id]+=dt;}
+  /* 远景帆船：慢得几乎看不出在动，漂出画面就从另一侧回来 */
+  for(const b of boats){
+    b.x+=b.dir*b.sp*dt;
+    if(b.x<-36){b.x=W+34;b.y=264+Math.random()*12;}
+    else if(b.x>W+36){b.x=-34;b.y=264+Math.random()*12;}
+  }
   /* v1.4：小生物——海鸥按点路过，海豚守着自己的钟，螃蟹走完这一段沙滩 */
   gullTimer-=dt;
   if(gullTimer<=0){gullTimer=GULL_MIN+Math.random()*GULL_SPAN;spawnGull();}
@@ -1397,6 +1437,14 @@ function draw(){
   const wl=waterlineY();
   /* 两层海浪：后层慢而缓，前层快一点、颜色更深 */
   seaLayer(256,6,Math.PI*2/340,timeSec*0.5,wl,0,0,0,P.seaB);
+  /* 远景帆船：贴着海平线慢慢漂，随浪轻轻点头上下的幅度都很小 */
+  for(const b of boats){
+    ctx.save();
+    ctx.translate(b.x,b.y+Math.sin(timeSec*0.7+b.ph)*1.2);
+    if(b.dir<0)ctx.scale(-1,1);
+    drawSailboat(ctx,b.s,P.night,moonA*0.9);
+    ctx.restore();
+  }
   const fg=ctx.createLinearGradient(0,288,0,wl+6);
   fg.addColorStop(0,P.seaT);fg.addColorStop(1,P.seaD);
   seaLayer(290,11,Math.PI*2/230,-timeSec*1.1,wl,3,Math.PI*2/95,timeSec*1.6,fg);
@@ -1709,7 +1757,7 @@ window.__game={
   decor:()=>[...decorUnlocked],
   check:checkDecor,
   pick:pickType,
-  critters,
+  critters,boats,
   gull:()=>spawnGull(),
   crabWalk:()=>spawnCrabWalk(),
   dolphin:()=>spawnDolphin(),
