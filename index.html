@@ -80,6 +80,12 @@ body{
 .diaryRow b{font-size:14px;color:#3c6a74;font-weight:600}
 .diarySum{text-align:center;font-size:13px;color:#8fa8ac;line-height:1.7;
   padding:14px 6px 2px;font-style:italic}
+/* ---------- 海边的朋友页 ---------- */
+.friendRow{display:flex;justify-content:center;gap:26px;padding:12px 0 4px;flex-wrap:wrap}
+.friendCard{width:104px;text-align:center}
+.friendCard canvas{width:56px;height:56px;display:block;margin:0 auto}
+.friendName{font-size:13px;color:#4d7a83;margin-top:2px}
+.friendNum{font-size:12px;color:#9db8bc;margin-top:1px}
 /* ---------- 漂流瓶纸条 ---------- */
 #notePanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-1deg);
   width:min(80%,420px);background:#fbf6ea;border-radius:14px;padding:18px 24px 20px;
@@ -109,6 +115,7 @@ body{
           <button class="tab on" id="tabItems">物品</button>
           <button class="tab" id="tabNotes">句子</button>
           <button class="tab" id="tabDiary">日记</button>
+          <button class="tab" id="tabFriends">朋友</button>
         </div>
         <span id="bookCount">0/7</span>
         <button id="closeBook">×</button>
@@ -116,6 +123,7 @@ body{
       <div id="bookList"></div>
       <div id="noteList" style="display:none"></div>
       <div id="diaryList" style="display:none"></div>
+      <div id="friendList" style="display:none"></div>
     </div>
     <div id="notePanel">
       <div id="noteTitle">· 漂流瓶 ·</div>
@@ -272,6 +280,40 @@ function drawCrab(c,s,t){
   c.fillStyle='#3d2f28';
   c.beginPath();c.arc(-s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
   c.beginPath();c.arc(s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
+}
+
+/* ---------- v1.4：小生物的画法 ---------- */
+function drawGull(c,s,flap){
+  /* 一笔小海鸥：两段弧的翅膀，随 flap 上下扇 */
+  c.strokeStyle='rgba(78,90,98,0.9)';c.lineWidth=2.2;c.lineCap='round';
+  c.beginPath();
+  c.moveTo(-s*1.7,-flap*s*0.9);
+  c.quadraticCurveTo(-s*0.8,flap*s*0.3,-s*0.1,-s*0.05);
+  c.quadraticCurveTo(s*0.8,flap*s*0.3,s*1.7,-flap*s*0.9);
+  c.stroke();
+}
+function drawDolphin(c,s){
+  /* 跃出的海豚：流线身体 + 背鳍 + 尾鳍 + 一点眼神 */
+  c.fillStyle='#4e6a78';
+  c.beginPath();
+  c.moveTo(-s*1.35,s*0.18);
+  c.quadraticCurveTo(-s*0.9,-s*0.5,0,-s*0.55);
+  c.quadraticCurveTo(s*0.6,-s*0.5,s*1.1,s*0.08);
+  c.quadraticCurveTo(s*0.45,s*0.32,-s*0.2,s*0.48);
+  c.quadraticCurveTo(-s*0.95,s*0.5,-s*1.35,s*0.18);
+  c.closePath();c.fill();
+  c.beginPath();                    /* 背鳍 */
+  c.moveTo(-s*0.2,-s*0.5);
+  c.quadraticCurveTo(-s*0.05,-s*1.05,s*0.28,-s*0.9);
+  c.quadraticCurveTo(s*0.22,-s*0.62,s*0.32,-s*0.48);
+  c.closePath();c.fill();
+  c.beginPath();                    /* 尾鳍 */
+  c.moveTo(-s*1.3,s*0.15);
+  c.quadraticCurveTo(-s*1.7,-s*0.2,-s*1.85,-s*0.42);
+  c.quadraticCurveTo(-s*1.55,s*0.08,-s*1.68,s*0.32);
+  c.closePath();c.fill();
+  c.fillStyle='#2e4652';
+  c.beginPath();c.arc(s*0.72,-s*0.12,s*0.07,0,Math.PI*2);c.fill();
 }
 
 /* ---------- v1.3：沙滩装饰的画法（纯 Canvas 几何，纯视觉） ---------- */
@@ -538,6 +580,14 @@ let dolphinSeen=0;  // 遇到海豚的次数（海豚机制之后的版本上线
 const DECOR_DEFS={chime:'贝壳风铃',light:'一盏小灯',umbrella:'岸边的伞'};
 let decorUnlocked=[];
 let decorAge={};   // 每件装饰解锁后的淡入计时
+/* v1.4 小生物：海鸥、螃蟹、海豚，全是氛围，不构成任务 */
+const GULL_MIN=60,GULL_SPAN=60;          // 海鸥：每 60~120 秒路过一只
+const CRAB_WALK_CHANCE=0.4;              // 每次退潮螃蟹出场的概率
+const DOLPHIN_MIN=480,DOLPHIN_SPAN=120;  // 海豚：平均每 8~10 分钟跃出一次
+let critters=[];
+let seagullSeen=0;
+let gullTimer=GULL_MIN+Math.random()*GULL_SPAN;
+let dolphinTimer=DOLPHIN_MIN+Math.random()*DOLPHIN_SPAN;
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
 let collectedNotes=[];      // 已捡到的句子编号
 let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:''};
@@ -566,6 +616,7 @@ function loadSave(){
     }
     if(s.friends&&typeof s.friends.crab==='number')crabSeen=s.friends.crab;
     if(s.friends&&typeof s.friends.dolphin==='number')dolphinSeen=s.friends.dolphin;
+    if(s.friends&&typeof s.friends.seagull==='number')seagullSeen=s.friends.seagull;
     if(Array.isArray(s.decor))decorUnlocked=s.decor.filter(d=>DECOR_DEFS[d]);
     if(s.stats){
       stats.pickedTotal=s.stats.pickedTotal||0;
@@ -587,7 +638,7 @@ function saveGame(){
       version:1,
       counts,
       bottles:collectedNotes,
-      friends:{crab:crabSeen,dolphin:dolphinSeen,seagull:0},
+      friends:{crab:crabSeen,dolphin:dolphinSeen,seagull:seagullSeen},
       decor:decorUnlocked,
       stats:{
         totalSec:Math.floor(stats.totalSec),
@@ -722,6 +773,33 @@ function decorFree(x,y){
   return true;
 }
 
+/* ---------- v1.4：小生物的出场（出现即计入朋友页的相遇次数） ---------- */
+function spawnGull(){
+  const dir=Math.random()<0.5?1:-1;
+  critters.push({kind:'gull',dir,
+    x:dir>0?-40:W+40,                    // 从画面外飞进来
+    baseY:70+Math.random()*130,
+    t:0,dur:5+Math.random()*2,
+    sc:0.7+Math.random()*0.5,ph:Math.random()*6.28});
+  seagullSeen++;saveGame();
+}
+function spawnCrabWalk(){
+  const dir=Math.random()<0.5?1:-1;
+  critters.push({kind:'crab',dir,
+    x:dir>0?-30:W+30,y:588+Math.random()*100,
+    t:0,dur:6+Math.random()*2,
+    scare:false,scareT:0});
+  crabSeen++;saveGame();
+}
+function spawnDolphin(){
+  const dir=Math.random()<0.5?1:-1;
+  critters.push({kind:'dolphin',dir,
+    x0:180+Math.random()*(W-360),y0:300+Math.random()*50,
+    t:0,dur:1.2});
+  dolphinSeen++;saveGame();
+  playSplash();
+}
+
 /* ---------- 潮汐状态切换（进入/离开退潮窗口，含大退潮） ---------- */
 function checkTide(){
   const t=tideLevel();
@@ -734,6 +812,7 @@ function checkTide(){
     spawnBatch(2+Math.floor(Math.random()*2),0.5);
     spawnBottle(0.6);
     if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.7);
+    if(Math.random()<CRAB_WALK_CHANCE)spawnCrabWalk();
     showToast('今天退得特别远…');
   }else if(!bigTideActive&&prevTide>=LOW_TIDE_LINE&&t<LOW_TIDE_LINE){
     /* 进入普通退潮 */
@@ -742,6 +821,7 @@ function checkTide(){
     spawnBatch(2+Math.floor(Math.random()*3),0.2);
     if(Math.random()<0.08)spawnBottle(0.4);
     if(Math.random()<MOUND_CHANCE)spawnMounds(1+Math.floor(Math.random()*2),0.5);
+    if(Math.random()<CRAB_WALK_CHANCE)spawnCrabWalk();
   }
   if(bigTideActive&&prevTide<BIG_TIDE_LINE&&t>=BIG_TIDE_LINE){
     /* 离开大退潮窗口：涨潮把东西带走 */
@@ -849,6 +929,30 @@ function update(dt){
   effects=effects.filter(e=>e.t<e.dur);
   /* v1.3：新装饰解锁后 2 秒里慢慢显形 */
   for(const id in decorAge){if(decorAge[id]<2)decorAge[id]+=dt;}
+  /* v1.4：小生物——海鸥按点路过，海豚守着自己的钟，螃蟹走完这一段沙滩 */
+  gullTimer-=dt;
+  if(gullTimer<=0){gullTimer=GULL_MIN+Math.random()*GULL_SPAN;spawnGull();}
+  dolphinTimer-=dt;
+  if(dolphinTimer<=0){dolphinTimer=DOLPHIN_MIN+Math.random()*DOLPHIN_SPAN;spawnDolphin();}
+  for(let i=critters.length-1;i>=0;i--){
+    const c=critters[i];
+    c.t+=dt;
+    if(c.kind==='gull'){
+      c.x+=c.dir*dt*(W+80)/c.dur;
+      if(c.t>c.dur){critters.splice(i,1);continue;}
+    }else if(c.kind==='crab'){
+      if(c.scare){
+        c.scareT+=dt;
+        c.x+=c.dir*dt*180;                    // 被吓到：慌张加速
+        if(c.scareT>1){critters.splice(i,1);continue;}   // 钻进沙里不见了
+      }else{
+        c.x+=c.dir*dt*(W+60)/c.dur;
+        if(c.t>c.dur){critters.splice(i,1);continue;}
+      }
+    }else if(c.kind==='dolphin'){
+      if(c.t>c.dur){critters.splice(i,1);continue;}
+    }
+  }
   /* 自动存档：每 5 秒一次 */
   saveTimer-=dt;
   if(saveTimer<=0){saveTimer=5;saveGame();}
@@ -908,6 +1012,16 @@ function handleTap(x,y){
     checkDecor();   // v1.3：看看是不是凑齐了哪套装
     return;
   }
+  /* v1.4：没点中别的，也许吓到了正在横行的小螃蟹 */
+  for(const c of critters){
+    if(c.kind!=='crab'||c.scare)continue;
+    const dx=x-c.x,dy=y-c.y;
+    if(dx*dx+dy*dy<3600){
+      c.scare=true;c.scareT=0;
+      showToast('小螃蟹钻进沙里躲起来了');
+      return;
+    }
+  }
   if(y>waterlineY()+6&&!canCollect()&&timeSec-lastHint>2){
     lastHint=timeSec;
     showToast('还没退潮，慢慢等海水退下去~');
@@ -940,6 +1054,8 @@ const tabItemsEl=document.getElementById('tabItems');
 const tabNotesEl=document.getElementById('tabNotes');
 const tabDiaryEl=document.getElementById('tabDiary');
 const diaryListEl=document.getElementById('diaryList');
+const tabFriendsEl=document.getElementById('tabFriends');
+const friendListEl=document.getElementById('friendList');
 let activeTab='items';
 const entries={};
 (function buildBook(){
@@ -1032,16 +1148,50 @@ function refreshDiary(){
     :'这里快成了你的秘密海岸。';
   diaryListEl.append(sum);
 }
+/* ---------- v1.4：海边的朋友（图鉴第四个页签，记相遇次数） ---------- */
+function refreshFriends(){
+  friendListEl.innerHTML='';
+  const row=document.createElement('div');row.className='friendRow';
+  const defs=[
+    {name:'海鸥',n:seagullSeen,draw:g=>drawGull(g,9,0.4)},
+    {name:'螃蟹',n:crabSeen,draw:g=>drawCrab(g,10,0.8)},
+    {name:'海豚',n:dolphinSeen,draw:g=>drawDolphin(g,11)}
+  ];
+  for(const f of defs){
+    const card=document.createElement('div');card.className='friendCard';
+    const c=document.createElement('canvas');c.width=112;c.height=112;
+    const g=c.getContext('2d');
+    g.setTransform(2,0,0,2,0,0);g.translate(28,28);
+    const nm=document.createElement('div');nm.className='friendName';
+    const num=document.createElement('div');num.className='friendNum';
+    if(f.name==='海豚'&&f.n===0){
+      /* 还没遇见过的海豚：留一点念想 */
+      nm.textContent='？？？';
+      num.textContent='听说海里有大家伙';
+    }else{
+      g.globalAlpha=f.n>0?1:0.15;
+      f.draw(g);
+      nm.textContent=f.name;
+      num.textContent=f.n>0?('遇到过 '+f.n+' 次'):'还没遇到过';
+    }
+    card.append(c,nm,num);
+    row.append(card);
+  }
+  friendListEl.append(row);
+}
 function switchTab(tab){
   activeTab=tab;
   tabItemsEl.classList.toggle('on',tab==='items');
   tabNotesEl.classList.toggle('on',tab==='notes');
   tabDiaryEl.classList.toggle('on',tab==='diary');
+  tabFriendsEl.classList.toggle('on',tab==='friends');
   bookListEl.style.display=tab==='items'?'block':'none';
   noteListEl.style.display=tab==='notes'?'block':'none';
   diaryListEl.style.display=tab==='diary'?'block':'none';
+  friendListEl.style.display=tab==='friends'?'block':'none';
   if(tab==='notes')refreshNoteList();
   if(tab==='diary')refreshDiary();
+  if(tab==='friends')refreshFriends();
   refreshBook();
 }
 function openBook(){bookOpen=true;bookPanel.classList.add('open');switchTab(activeTab);}
@@ -1051,6 +1201,7 @@ closeBookBtn.addEventListener('click',closeBook);
 tabItemsEl.addEventListener('click',()=>switchTab('items'));
 tabNotesEl.addEventListener('click',()=>switchTab('notes'));
 tabDiaryEl.addEventListener('click',()=>switchTab('diary'));
+tabFriendsEl.addEventListener('click',()=>switchTab('friends'));
 
 /* ---------- 漂流瓶纸条 ---------- */
 const notePanel=document.getElementById('notePanel');
@@ -1126,6 +1277,26 @@ function playChime(){
     g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.35);
     o.connect(g);g.connect(audioCtx.destination);
     o.start();o.stop(audioCtx.currentTime+0.4);
+  }catch(e){}
+}
+function playSplash(){
+  /* v1.4：海豚跃出水面的那声水响——一撮快速低通的白噪 */
+  if(!audioCtx||muted)return;
+  try{
+    const dur=0.4;
+    const buf=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*dur),audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.6);
+    const src=audioCtx.createBufferSource();src.buffer=buf;
+    const filt=audioCtx.createBiquadFilter();
+    filt.type='lowpass';
+    filt.frequency.setValueAtTime(1400,audioCtx.currentTime);
+    filt.frequency.exponentialRampToValueAtTime(300,audioCtx.currentTime+dur);
+    const g=audioCtx.createGain();
+    g.gain.setValueAtTime(0.4,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+dur);
+    src.connect(filt);filt.connect(g);g.connect(audioCtx.destination);
+    src.start();
   }catch(e){}
 }
 document.addEventListener('pointerdown',()=>{
@@ -1267,6 +1438,53 @@ function draw(){
     else if(id==='light')drawLight();
     else if(id==='umbrella')drawUmbrella();
     ctx.restore();
+  }
+  /* v1.4：小生物（海鸥飞过天空，海豚跃出海面，螃蟹横穿沙滩） */
+  for(const c of critters){
+    if(c.kind==='gull'){
+      const p=c.t/c.dur;
+      const y=c.baseY-Math.sin(p*Math.PI)*36+Math.sin(p*Math.PI*2)*14;
+      ctx.save();
+      ctx.translate(c.x,y);
+      ctx.scale(c.sc*c.dir,c.sc);
+      drawGull(ctx,7,Math.sin(timeSec*9+c.ph));
+      ctx.restore();
+    }else if(c.kind==='crab'){
+      const hop=c.scare?0:Math.abs(Math.sin(c.t*9))*3;   // 横行时一跳一跳
+      const sc=c.scare?Math.max(0.05,1-c.scareT):1;      // 被吓到：越缩越小钻进沙里
+      ctx.save();
+      ctx.globalAlpha=c.scare?Math.max(0,1-c.scareT*0.9):1;
+      ctx.translate(c.x,c.y+(c.scare?c.scareT*9:0)-hop);
+      if(c.dir<0)ctx.scale(-1,1);
+      drawCrab(ctx,11*sc,c.t*(c.scare?30:10));
+      ctx.restore();
+    }else if(c.kind==='dolphin'){
+      const p=Math.min(1,c.t/c.dur);
+      const x=c.x0+c.dir*(p-0.5)*170;
+      const y=c.y0-Math.sin(p*Math.PI)*58;
+      /* 身体顺着弧线的切线方向转 */
+      const vx=c.dir*170,vy=-Math.cos(p*Math.PI)*Math.PI*58;
+      let ang=Math.atan2(vy,vx);
+      ctx.save();
+      ctx.translate(x,y);
+      if(c.dir<0){ctx.scale(-1,1);ang=ang-Math.PI;}
+      ctx.rotate(ang);
+      drawDolphin(ctx,15);
+      ctx.restore();
+      /* 出水和入水的瞬间各溅一串小水花 */
+      if(p<0.12||p>0.88){
+        c.splashT=c.splashT||0;
+        if(c.t-c.splashT>0.25){
+          c.splashT=c.t;
+          for(let k=0;k<4;k++){
+            const a=-Math.PI*(0.3+Math.random()*0.4);
+            effects.push({kind:'splash',x,y:c.y0,
+              vx:Math.cos(a)*(40+Math.random()*50)*c.dir,vy:Math.sin(a)*(70+Math.random()*80),
+              t:0,dur:0.45+Math.random()*0.15});
+          }
+        }
+      }
+    }
   }
   /* 沙滩上的物品（少见/稀有带缓慢呼吸的微光；送礼上岸的跟一道泡沫弧） */
   for(const it of items){
@@ -1491,6 +1709,11 @@ window.__game={
   decor:()=>[...decorUnlocked],
   check:checkDecor,
   pick:pickType,
+  critters,
+  gull:()=>spawnGull(),
+  crabWalk:()=>spawnCrabWalk(),
+  dolphin:()=>spawnDolphin(),
+  friends:()=>({crab:crabSeen,dolphin:dolphinSeen,seagull:seagullSeen}),
   skip:s=>{
     const steps=Math.ceil(s/0.05);
     for(let i=0;i<steps;i++){
