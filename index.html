@@ -33,6 +33,7 @@ body{
 #tideMark{position:absolute;top:50%;left:0;width:14px;height:14px;border-radius:50%;
   background:#fff;border:2px solid #79b3bd;transform:translate(-50%,-50%);
   box-shadow:0 1px 3px rgba(60,100,110,.3)}
+#bigStar{position:absolute;right:-3px;top:-9px;font-size:13px;color:#d9b45a;display:none}
 #tideLabel{font-size:12px;color:#4d7a83;min-height:16px}
 .btn{pointer-events:auto;cursor:pointer;border:none;border-radius:18px;
   background:rgba(255,255,255,.62);backdrop-filter:blur(5px);color:#4d7a83;
@@ -46,19 +47,41 @@ body{
   background:rgba(255,255,255,.78);color:#5a8189;padding:7px 18px;border-radius:17px;
   font-size:14px;opacity:0;transition:opacity .45s;white-space:nowrap;pointer-events:none}
 #toast.show{opacity:1}
+/* ---------- 图鉴面板（物品 / 句子 两个页签） ---------- */
 #bookPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:min(86%,540px);background:rgba(252,254,253,.94);border-radius:18px;
-  padding:16px 18px 18px;pointer-events:auto;display:none;
+  width:min(92%,640px);max-height:84%;overflow-y:auto;
+  background:rgba(252,254,253,.94);border-radius:18px;
+  padding:14px 18px 16px;pointer-events:auto;display:none;
   box-shadow:0 14px 44px rgba(50,100,110,.28)}
 #bookPanel.open{display:block}
-#bookHead{display:flex;align-items:center;gap:10px;color:#4d7a83;font-size:16px;margin-bottom:12px}
-#bookCount{font-size:13px;color:#8fb0b5}
-#closeBook{margin-left:auto;border:none;background:none;font-size:22px;color:#8fb0b5;cursor:pointer;line-height:1}
-#bookList{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap}
-.bookItem{width:104px;text-align:center}
-.bookItem canvas{width:58px;height:58px;display:block;margin:0 auto}
-.bookName{font-size:14px;color:#4d7a83;margin-top:3px}
+#bookHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#bookTabs{display:flex;gap:4px}
+.tab{border:none;background:rgba(125,180,189,.16);color:#4d7a83;font-size:13px;
+  padding:4px 12px;border-radius:12px;cursor:pointer;font-family:inherit}
+.tab.on{background:#7db4bd;color:#fff}
+#bookCount{font-size:13px;color:#8fb0b5;margin-left:auto}
+#closeBook{border:none;background:none;font-size:22px;color:#8fb0b5;cursor:pointer;line-height:1}
+.rarityRow{display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:4px;margin-bottom:6px}
+.rarityHead{width:100%;display:flex;align-items:center;gap:5px;font-size:12px;color:#8fb0b5;padding-left:2px}
+.rarityDot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.bookItem{width:88px;text-align:center}
+.bookItem canvas{width:54px;height:54px;display:block;margin:0 auto}
+.bookItem .rarityDot{margin:1px auto 0;display:block}
+.bookName{font-size:13px;color:#4d7a83;margin-top:1px}
 .bookNum{font-size:12px;color:#9db8bc;margin-top:1px}
+#noteList{max-height:300px;overflow-y:auto;padding-right:4px}
+.noteLine{font-size:13px;color:#4d7a83;line-height:1.7;padding:4px 0;
+  border-bottom:1px dashed rgba(125,180,189,.25)}
+.noteEmpty{font-size:13px;color:#9db8bc;text-align:center;padding:26px 0}
+/* ---------- 漂流瓶纸条 ---------- */
+#notePanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-1deg);
+  width:min(80%,420px);background:#fbf6ea;border-radius:14px;padding:18px 24px 20px;
+  pointer-events:auto;display:none;box-shadow:0 14px 40px rgba(90,80,60,.25)}
+#notePanel.open{display:block}
+#noteTitle{font-size:11px;color:#b3a789;letter-spacing:4px;text-align:center;margin-bottom:8px}
+#noteText{font-size:15px;line-height:1.8;color:#6b5f4a;text-align:center;min-height:54px;
+  display:flex;align-items:center;justify-content:center}
+#noteOk{display:block;margin:12px auto 0}
 </style>
 </head>
 <body>
@@ -67,15 +90,28 @@ body{
   <div id="hud">
     <div id="tideBox">
       <div id="tideTitle">潮汐</div>
-      <div id="tideBar"><div id="tideMark"></div></div>
+      <div id="tideBar"><div id="tideMark"></div><div id="bigStar">★</div></div>
       <div id="tideLabel">…</div>
     </div>
-    <button class="btn" id="bookBtn">图鉴<span id="miniCount">0/4</span></button>
+    <button class="btn" id="bookBtn">图鉴<span id="miniCount">0/7</span></button>
     <button class="btn" id="muteBtn">🔊</button>
     <div id="toast"></div>
     <div id="bookPanel">
-      <div id="bookHead">海边图鉴<span id="bookCount">0/4</span><button id="closeBook">×</button></div>
+      <div id="bookHead">
+        <div id="bookTabs">
+          <button class="tab on" id="tabItems">物品</button>
+          <button class="tab" id="tabNotes">句子</button>
+        </div>
+        <span id="bookCount">0/7</span>
+        <button id="closeBook">×</button>
+      </div>
       <div id="bookList"></div>
+      <div id="noteList" style="display:none"></div>
+    </div>
+    <div id="notePanel">
+      <div id="noteTitle">· 漂流瓶 ·</div>
+      <div id="noteText"></div>
+      <button class="btn" id="noteOk">收好</button>
     </div>
   </div>
 </div>
@@ -89,7 +125,7 @@ const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 const W=1280,H=720;
 const HORIZON=250;   // 海平线高度
-const SAND_TOP=520;  // 沙滩区域起点（会被海水盖住一部分）
+const WET_TOP=460;   // 沙滩绘制起点（大退潮时才整片露出来）
 let sx=1,sy=1;
 function resize(){
   const r=document.getElementById('stage').getBoundingClientRect();
@@ -102,7 +138,9 @@ window.addEventListener('resize',resize);
 resize();
 
 /* ============================================================
-   物品种类：全部用 Canvas 几何图形画出来，不依赖任何图片/Emoji
+   物品种类：全部用 Canvas 几何图形画，不依赖图片/Emoji
+   rarity：0 常见 / 1 少见 / 2 稀有
+   wetOnly：只在大退潮露出的湿沙带出现
    ============================================================ */
 function drawScallop(c,s){
   c.beginPath();
@@ -120,6 +158,17 @@ function drawScallop(c,s){
   c.strokeStyle='rgba(214,178,128,.55)';c.lineWidth=1.2;c.stroke();
   c.beginPath();c.arc(0,s*0.32,s*0.2,0,Math.PI*2);
   c.fillStyle='#e9d2a4';c.fill();
+}
+function drawClam(c,s){
+  c.beginPath();
+  c.ellipse(0,0,s*0.95,s*0.62,0,0,Math.PI*2);
+  c.fillStyle='#f3e9d6';c.fill();
+  c.strokeStyle='#d9c29a';c.lineWidth=1.6;c.stroke();
+  c.beginPath();
+  c.ellipse(0,0,s*0.6,s*0.38,0,0,Math.PI*2);
+  c.strokeStyle='rgba(205,178,135,.7)';c.lineWidth=1.2;c.stroke();
+  c.beginPath();c.moveTo(-s*0.92,0);c.lineTo(s*0.92,0);
+  c.strokeStyle='rgba(205,178,135,.45)';c.stroke();
 }
 function drawStar(c,s){
   c.beginPath();
@@ -154,71 +203,277 @@ function drawGlass(c,s){
   c.strokeStyle='rgba(255,255,255,0.7)';c.lineWidth=2;c.stroke();
   c.restore();
 }
-const TYPES=[
-  {id:'scallop',name:'扇贝',draw:drawScallop,weight:3},
-  {id:'star',name:'海星',draw:drawStar,weight:2},
-  {id:'conch',name:'海螺',draw:drawConch,weight:2},
-  {id:'glass',name:'海玻璃',draw:drawGlass,weight:1}
-];
-const TOTAL_WEIGHT=TYPES.reduce((a,t)=>a+t.weight,0);
-function pickType(){
-  let r=Math.random()*TOTAL_WEIGHT;
-  for(const t of TYPES){r-=t.weight;if(r<=0)return t.id;}
-  return TYPES[0].id;
+function drawMoon(c,s){
+  c.beginPath();
+  c.arc(0,0,s*0.88,0,Math.PI*2);
+  c.fillStyle='#edf4f6';c.fill();
+  c.strokeStyle='#bcd7de';c.lineWidth=1.5;c.stroke();
+  c.beginPath();
+  for(let a=0;a<=Math.PI*2.5;a+=0.12){
+    const r=a*s*0.1;
+    const x=Math.cos(a)*r,y=Math.sin(a)*r;
+    if(a===0)c.moveTo(x,y);else c.lineTo(x,y);
+  }
+  c.strokeStyle='rgba(150,190,205,.8)';c.lineWidth=1.4;c.stroke();
+  c.beginPath();c.arc(-s*0.3,-s*0.32,s*0.14,0,Math.PI*2);
+  c.fillStyle='rgba(255,255,255,.9)';c.fill();
 }
-function typeName(id){return TYPES.find(t=>t.id===id).name;}
-function typeDraw(id){return TYPES.find(t=>t.id===id).draw;}
+function drawCoral(c,s){
+  c.strokeStyle='#f0a58e';c.lineCap='round';
+  c.lineWidth=s*0.28;
+  c.beginPath();c.moveTo(0,s*0.7);c.quadraticCurveTo(s*0.05,0,-s*0.1,-s*0.75);c.stroke();
+  c.lineWidth=s*0.2;
+  c.beginPath();c.moveTo(s*0.02,s*0.05);c.quadraticCurveTo(s*0.45,-s*0.15,s*0.62,-s*0.6);c.stroke();
+  c.beginPath();c.moveTo(0,s*0.3);c.quadraticCurveTo(-s*0.42,s*0.05,-s*0.6,-s*0.35);c.stroke();
+  c.lineWidth=s*0.12;
+  c.beginPath();c.moveTo(-s*0.1,-s*0.5);c.lineTo(-s*0.05,-s*0.9);c.stroke();
+}
+function drawBottle(c,s){
+  c.save();
+  c.rotate(-0.5);
+  c.beginPath();
+  if(c.roundRect)c.roundRect(-s*0.5,-s*0.75,s,s*1.5,s*0.35);
+  else c.rect(-s*0.5,-s*0.75,s,s*1.5);
+  c.fillStyle='rgba(178,222,226,0.5)';c.fill();
+  c.strokeStyle='rgba(255,255,255,0.7)';c.lineWidth=1.5;c.stroke();
+  c.fillStyle='#d8b98a';
+  c.fillRect(-s*0.16,-s*1.0,s*0.32,s*0.28);
+  c.beginPath();c.ellipse(0,s*0.1,s*0.16,s*0.34,0,0,Math.PI*2);
+  c.fillStyle='rgba(255,252,240,0.9)';c.fill();
+  c.strokeStyle='rgba(200,190,160,.6)';c.lineWidth=1;c.stroke();
+  c.restore();
+}
+const RARITY=[
+  {name:'常见',color:'#9aa7ab'},
+  {name:'少见',color:'#6fa8c9'},
+  {name:'稀有',color:'#d9b45a'}
+];
+const TYPES=[
+  {id:'scallop',name:'扇贝',draw:drawScallop,weight:30,rarity:0},
+  {id:'clam',name:'蛤蜊',draw:drawClam,weight:25,rarity:0},
+  {id:'star',name:'海星',draw:drawStar,weight:14,rarity:1},
+  {id:'conch',name:'海螺',draw:drawConch,weight:14,rarity:1},
+  {id:'glass',name:'海玻璃',draw:drawGlass,weight:10,rarity:1},
+  {id:'moon',name:'月光螺',draw:drawMoon,weight:4,rarity:2},
+  {id:'coral',name:'珊瑚枝',draw:drawCoral,weight:3,rarity:2,wetOnly:true}
+];
+function pickType(zone){
+  const pool=TYPES.filter(t=>zone==='wet'?true:!t.wetOnly);
+  let total=0;
+  const ws=pool.map(t=>{
+    let w=t.weight;
+    if(zone==='wet'&&t.id==='moon')w*=2;
+    total+=w;return w;
+  });
+  let r=Math.random()*total;
+  for(let i=0;i<pool.length;i++){r-=ws[i];if(r<=0)return pool[i].id;}
+  return pool[0].id;
+}
+function typeInfo(id){return TYPES.find(t=>t.id===id);}
+function typeName(id){return typeInfo(id).name;}
+function typeDraw(id){return typeInfo(id).draw;}
+
+/* 漂流瓶里的句子（捡到前不重复） */
+const SENTENCES=[
+  '海风把今天的烦恼带走了一点点。',
+  '潮水每天都来两次，从不觉得累。',
+  '你看，浪花失败了无数次，还是很好看。',
+  '贝壳的纹路，是海写给它的时间。',
+  '不着急的话，就再看一会儿海吧。',
+  '今天的海和昨天不一样，你也是。',
+  '沙滩上的脚印会被抹平，走过去这件事不会。',
+  '海星躺在原地，也算是一种生活方式。',
+  '云飘得很慢，因为它没有要赶的路。',
+  '把想说的话装进瓶子里，海会替你保管。',
+  '退潮是为了让你看看平时看不见的地方。',
+  '太阳落进海里，明天会洗干净再升起来。',
+  '有空的海贝壳，也有住着小蟹的海贝壳。',
+  '海平面其实不是平的，是海在轻轻呼吸。',
+  '你数过浪花吗？数不过来的，放心发呆吧。',
+  '咸咸的风，是海在跟你打招呼。',
+  '捡到什么都可以，空手也很不错。',
+  '远处的船不着急，你也不用。',
+  '海螺里住着昨天的浪声。',
+  '月亮也在看这片海，只是你们错开了时间。',
+  '沙子记得每一个坐下来看海的人。',
+  '浪把珊瑚磨圆，用了好多年，好事慢慢来。',
+  '今天没有特别的事，就是很好的一天。',
+  '海不会问你今天做了什么，它只是在那儿。'
+];
 
 /* ============================================================
    潮汐状态
-   tideLevel 在 0~1 之间：0 = 完全退潮，1 = 涨满潮
-   用余弦曲线让涨落自然平滑，TIDE_PERIOD 是一个完整的
-   涨落周期（秒）。低于 LOW_TIDE_LINE 算退潮，才能捡东西。
+   tideLevel 在 0~1 之间：0 = 完全退潮，1 = 涨满潮。
+   每 BIG_TIDE_EVERY 次退潮出现一次「大退潮」：
+   水退得更低（露出湿沙带）、窗口更长、必出漂流瓶。
    ============================================================ */
 const TIDE_PERIOD=15;      // 15 秒一个完整涨落周期
-const LOW_TIDE_LINE=0.3;   // 潮位低于 30% 算退潮
-const TIDE_PHASE=-1.159;   // 页面一打开正好是退潮开始，方便上手
-const WATER_MIN=540,WATER_SPAN=100; // 水线位置 = 540 + 潮位*100
+const LOW_TIDE_LINE=0.3;   // 普通退潮判定线
+const BIG_TIDE_LINE=0.42;  // 大退潮判定线（窗口更长）
+const BIG_TIDE_EVERY=4;    // 每 4 次退潮出现 1 次大退潮
+const BIG_TIDE_LIFT=80;    // 大退潮额外退出的像素
+const WATER_MIN=540,WATER_SPAN=100;
 let timeSec=0,lastTs=null;
-let wasLow=false,lowWindowSpawns=0;
-function tideLevel(){return (1-Math.cos(timeSec/TIDE_PERIOD*Math.PI*2+TIDE_PHASE))/2;}
-function canCollect(){return tideLevel()<LOW_TIDE_LINE;}
-function waterlineY(){return WATER_MIN+tideLevel()*WATER_SPAN;}
+let retreatCount=0,bigTideActive=false,prevTide=1;
+let lowWindowSpawns=0;
+function tideLevel(){return (1-Math.cos(timeSec/TIDE_PERIOD*Math.PI*2+TIDE_PHASE_VAL))/2;}
+const TIDE_PHASE_VAL=-1.159; // 开页正好是退潮开始，方便上手
+function collectLine(){return bigTideActive?BIG_TIDE_LINE:LOW_TIDE_LINE;}
+function canCollect(){return tideLevel()<collectLine();}
+function nextIsBig(){return (retreatCount+1)%BIG_TIDE_EVERY===0;}
+function bigLift(){
+  if(!bigTideActive)return 0;
+  const t=tideLevel();
+  return t<BIG_TIDE_LINE?BIG_TIDE_LIFT*(BIG_TIDE_LINE-t)/BIG_TIDE_LINE:0;
+}
+function waterlineY(){return WATER_MIN+tideLevel()*WATER_SPAN-bigLift();}
 
 /* ============================================================
-   场景数据：沙滩上的物品、波光、拾取特效
+   场景数据：物品、漂流瓶、波光、特效、统计
    ============================================================ */
-let items=[],effects=[],sparkles=[],sparkleTimer=0.8;
+let items=[],bottles=[],effects=[],sparkles=[],sparkleTimer=0.8;
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
+let collectedNotes=[];      // 已捡到的句子编号
+let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:''};
 
-function spawnBatch(n,baseDelay){
+/* ============================================================
+   本地存档（localStorage）：图鉴数量 / 句子 / 统计，
+   刷新不丢。version 不匹配的旧档直接丢弃。
+   ============================================================ */
+const SAVE_KEY='kanhai-save';
+let saveTimer=5;
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function loadSave(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return;
+    const s=JSON.parse(raw);
+    if(s.version!==1)return;
+    if(s.counts)for(const t of TYPES){
+      if(typeof s.counts[t.id]==='number')counts[t.id]=s.counts[t.id];
+    }
+    if(Array.isArray(s.bottles)){
+      collectedNotes=[...new Set(s.bottles)].filter(i=>Number.isInteger(i)&&i>=0&&i<SENTENCES.length);
+    }
+    if(s.stats){
+      stats.pickedTotal=s.stats.pickedTotal||0;
+      stats.totalSec=s.stats.totalSec||0;
+      const today=todayStr();
+      if(s.stats.lastVisit===today){
+        stats.visitDays=s.stats.visitDays||1;
+      }else{
+        const y=new Date();y.setDate(y.getDate()-1);
+        const ys=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
+        stats.visitDays=(s.stats.lastVisit===ys)?(s.stats.visitDays||0)+1:1;
+      }
+    }
+  }catch(e){/* 读不到就当全新开始 */}
+}
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify({
+      version:1,
+      counts,
+      bottles:collectedNotes,
+      friends:{crab:0,dolphin:0,seagull:0},
+      decor:[],
+      stats:{
+        totalSec:Math.floor(stats.totalSec),
+        pickedTotal:stats.pickedTotal,
+        visitDays:stats.visitDays,
+        lastVisit:todayStr()
+      }
+    }));
+  }catch(e){/* 存不进去就算了，不影响玩 */}
+}
+
+/* ---------- 生成：物品 / 漂流瓶 ---------- */
+function spawnBatch(n,baseDelay,zone){
   for(let i=0;i<n;i++){
     let x=640,y=630,ok=false;
     for(let tries=0;tries<24&&!ok;tries++){
       x=70+Math.random()*(W-140);
-      y=575+Math.random()*120;
-      ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80);
+      y=zone==='wet'?475+Math.random()*90:580+Math.random()*115;
+      ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
+        &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80);
     }
-    items.push({typeId:pickType(),x,y,alpha:0,rot:(Math.random()-0.5)*0.6,
+    items.push({typeId:pickType(zone),x,y,alpha:0,rot:(Math.random()-0.5)*0.6,
       appearAt:timeSec+baseDelay+Math.random()*1.2,wash:false});
   }
+}
+function spawnBottle(baseDelay){
+  let x=640,y=600,ok=false;
+  for(let tries=0;tries<24&&!ok;tries++){
+    x=90+Math.random()*(W-180);
+    y=555+Math.random()*85;
+    ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
+      &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80);
+  }
+  bottles.push({x,y,alpha:0,appearAt:timeSec+baseDelay+Math.random()*1.0,wash:false});
+}
+function pickSentence(){
+  const un=SENTENCES.map((_,i)=>i).filter(i=>!collectedNotes.includes(i));
+  if(un.length===0)return Math.floor(Math.random()*SENTENCES.length);
+  return un[Math.floor(Math.random()*un.length)];
+}
+
+/* ---------- 潮汐状态切换（进入/离开退潮窗口，含大退潮） ---------- */
+function checkTide(){
+  const t=tideLevel();
+  if(!bigTideActive&&prevTide>=BIG_TIDE_LINE&&t<BIG_TIDE_LINE&&nextIsBig()){
+    /* 进入大退潮：湿沙带刷限定物品 + 必出漂流瓶 */
+    bigTideActive=true;
+    retreatCount++;
+    lowWindowSpawns=0;
+    spawnBatch(1+Math.floor(Math.random()*2),0.3,'wet');
+    spawnBatch(2+Math.floor(Math.random()*2),0.5);
+    spawnBottle(0.6);
+    showToast('今天退得特别远…');
+  }else if(!bigTideActive&&prevTide>=LOW_TIDE_LINE&&t<LOW_TIDE_LINE){
+    /* 进入普通退潮 */
+    retreatCount++;
+    lowWindowSpawns=0;
+    spawnBatch(2+Math.floor(Math.random()*3),0.2);
+    if(Math.random()<0.08)spawnBottle(0.4);
+  }
+  if(bigTideActive&&prevTide<BIG_TIDE_LINE&&t>=BIG_TIDE_LINE){
+    /* 离开大退潮窗口：涨潮把东西带走 */
+    bigTideActive=false;
+    for(const it of items)it.wash=true;
+    for(const b of bottles)b.wash=true;
+  }else if(!bigTideActive&&prevTide<LOW_TIDE_LINE&&t>=LOW_TIDE_LINE){
+    /* 离开普通退潮窗口 */
+    for(const it of items)it.wash=true;
+    for(const b of bottles)b.wash=true;
+  }
+  prevTide=t;
 }
 
 function update(dt){
   timeSec+=dt;
+  stats.totalSec+=dt;
+  checkTide();
   const low=canCollect();
-  /* 潮汐状态切换：进入退潮 → 刷新一批物品；开始涨潮 → 物品被海水带走 */
-  if(low&&!wasLow){lowWindowSpawns=0;spawnBatch(2+Math.floor(Math.random()*3),0.2);}
-  if(!low&&wasLow){for(const it of items)it.wash=true;}
-  if(low&&items.length===0&&lowWindowSpawns<2){
-    lowWindowSpawns++;spawnBatch(1+Math.floor(Math.random()*2),1.0);
+  /* 退潮窗口里捡空了，补刷一两次 */
+  if(low&&items.length===0&&lowWindowSpawns<2&&bottles.every(b=>b.wash)){
+    lowWindowSpawns++;
+    spawnBatch(1+Math.floor(Math.random()*2),1.0,
+      bigTideActive&&Math.random()<0.5?'wet':undefined);
   }
-  wasLow=low;
   /* 物品：淡入出现 / 涨潮时淡出消失 */
   for(let i=items.length-1;i>=0;i--){
     const it=items[i];
     if(it.wash){it.alpha-=dt*1.5;it.y+=dt*16;if(it.alpha<=0)items.splice(i,1);}
     else if(timeSec>=it.appearAt&&it.alpha<1){it.alpha=Math.min(1,it.alpha+dt/0.9);}
+  }
+  /* 漂流瓶：同上 */
+  for(let i=bottles.length-1;i>=0;i--){
+    const b=bottles[i];
+    if(b.wash){b.alpha-=dt*1.5;if(b.alpha<=0)bottles.splice(i,1);}
+    else if(timeSec>=b.appearAt&&b.alpha<1){b.alpha=Math.min(1,b.alpha+dt/0.9);}
   }
   /* 波光：每 2~3.4 秒随机闪一次 */
   sparkleTimer-=dt;
@@ -231,30 +486,53 @@ function update(dt){
   sparkles=sparkles.filter(s=>s.t<s.dur);
   for(const e of effects)e.t+=dt;
   effects=effects.filter(e=>e.t<e.dur);
+  /* 自动存档：每 5 秒一次 */
+  saveTimer-=dt;
+  if(saveTimer<=0){saveTimer=5;saveGame();}
 }
 
 /* ============================================================
-   收集逻辑：点击画布 → 命中物品就捡进图鉴，
-   涨潮时点沙滩只给一句轻提示，不会捡到任何东西
+   收集逻辑：点击画布 → 先看漂流瓶，再看物品；
+   涨潮时点沙滩只给一句轻提示，什么都不会捡到
    ============================================================ */
 let lastHint=-9;
+let noteOpen=false,bookOpen=false;
 function handleTap(x,y){
+  if(noteOpen){closeNote();return;}
   if(bookOpen){closeBook();return;}
-  let got=null;
+  let got=null,bottle=null;
   if(canCollect()){
-    for(let i=items.length-1;i>=0;i--){
-      const it=items[i];
-      if(it.wash||it.alpha<0.5)continue;
-      const dx=x-it.x,dy=y-it.y;
-      if(dx*dx+dy*dy<900){got=it;items.splice(i,1);break;}
+    for(let i=bottles.length-1;i>=0;i--){
+      const b=bottles[i];
+      if(b.wash||b.alpha<0.5)continue;
+      const dx=x-b.x,dy=y-b.y;
+      if(dx*dx+dy*dy<1024){bottle=b;bottles.splice(i,1);break;}
+    }
+    if(!bottle){
+      for(let i=items.length-1;i>=0;i--){
+        const it=items[i];
+        if(it.wash||it.alpha<0.5)continue;
+        const dx=x-it.x,dy=y-it.y;
+        if(dx*dx+dy*dy<900){got=it;items.splice(i,1);break;}
+      }
     }
   }
+  if(bottle){
+    effects.push({kind:'ring',x:bottle.x,y:bottle.y,t:0,dur:0.6});
+    openNote();
+    return;
+  }
   if(got){
+    const tp=typeInfo(got.typeId);
     counts[got.typeId]++;
+    stats.pickedTotal++;
     effects.push({kind:'ring',x:got.x,y:got.y,t:0,dur:0.6});
     effects.push({kind:'rise',x:got.x,y:got.y,t:0,dur:0.9,typeId:got.typeId});
-    showToast('捡到了：'+typeName(got.typeId));
+    if(tp.rarity===2){showToast('捡到了稀有的'+tp.name+'！');playChime();}
+    else if(tp.rarity===1)showToast('捡到了少见的'+tp.name+'！');
+    else showToast('捡到了：'+tp.name);
     refreshBook();
+    saveGame();
     return;
   }
   if(y>waterlineY()+6&&!canCollect()&&timeSec-lastHint>2){
@@ -277,22 +555,37 @@ function showToast(t){
   toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1800);
 }
 
-/* ---------- 图鉴 ---------- */
+/* ---------- 图鉴：按稀有度分三行 + 句子页签 ---------- */
 const bookPanel=document.getElementById('bookPanel');
 const bookBtn=document.getElementById('bookBtn');
 const closeBookBtn=document.getElementById('closeBook');
 const bookCountEl=document.getElementById('bookCount');
 const miniCountEl=document.getElementById('miniCount');
-let bookOpen=false;
+const bookListEl=document.getElementById('bookList');
+const noteListEl=document.getElementById('noteList');
+const tabItemsEl=document.getElementById('tabItems');
+const tabNotesEl=document.getElementById('tabNotes');
+let activeTab='items';
 const entries={};
 (function buildBook(){
-  const list=document.getElementById('bookList');
+  const rows=[0,1,2].map(r=>{
+    const row=document.createElement('div');row.className='rarityRow';
+    const head=document.createElement('div');head.className='rarityHead';
+    const dot=document.createElement('span');dot.className='rarityDot';
+    dot.style.background=RARITY[r].color;
+    const ht=document.createElement('span');ht.textContent=RARITY[r].name;
+    head.append(dot,ht);row.append(head);bookListEl.append(row);
+    return row;
+  });
   for(const t of TYPES){
     const d=document.createElement('div');d.className='bookItem';
-    const c=document.createElement('canvas');c.width=116;c.height=116;
+    const c=document.createElement('canvas');c.width=108;c.height=108;
+    const dot=document.createElement('span');dot.className='rarityDot';
+    dot.style.background=RARITY[t.rarity].color;
     const nm=document.createElement('div');nm.className='bookName';
     const num=document.createElement('div');num.className='bookNum';
-    d.append(c,nm,num);list.append(d);
+    d.append(c,dot,nm,num);
+    rows[t.rarity].append(d);
     entries[t.id]={cv:c,nm,num,type:t};
   }
 })();
@@ -302,39 +595,82 @@ function refreshBook(){
     const e=entries[t.id],n=counts[t.id];
     const g=e.cv.getContext('2d');
     g.setTransform(2,0,0,2,0,0);
-    g.clearRect(0,0,58,58);
-    g.translate(29,29);
+    g.clearRect(0,0,54,54);
+    g.translate(27,27);
     if(n>0){
       lit++;
       g.globalAlpha=1;
-      e.type.draw(g,16);
+      e.type.draw(g,15);
       e.nm.textContent=t.name;
       e.num.textContent='×'+n;
     }else{
       g.globalAlpha=0.15;
-      e.type.draw(g,16);
+      e.type.draw(g,15);
       g.globalAlpha=0.55;
-      g.fillStyle='#7a9aa0';g.font='15px sans-serif';
+      g.fillStyle='#7a9aa0';g.font='14px sans-serif';
       g.textAlign='center';g.textBaseline='middle';
       g.fillText('?',0,0);
       e.nm.textContent='？？？';
       e.num.textContent='还没捡到';
     }
   }
-  bookCountEl.textContent=lit+'/'+TYPES.length;
   miniCountEl.textContent=lit+'/'+TYPES.length;
+  if(activeTab==='items')bookCountEl.textContent=lit+'/'+TYPES.length;
+  else bookCountEl.textContent=collectedNotes.length+'/'+SENTENCES.length;
 }
-function openBook(){bookOpen=true;bookPanel.classList.add('open');refreshBook();}
+function refreshNoteList(){
+  noteListEl.innerHTML='';
+  const s=[...collectedNotes].sort((a,b)=>a-b);
+  if(s.length===0){
+    noteListEl.innerHTML='<div class="noteEmpty">还没捡到漂流瓶。<br>大退潮的时候，海边一定会有一个。</div>';
+    return;
+  }
+  for(const i of s){
+    const d=document.createElement('div');d.className='noteLine';
+    d.textContent='「'+SENTENCES[i]+'」';
+    noteListEl.append(d);
+  }
+}
+function switchTab(tab){
+  activeTab=tab;
+  tabItemsEl.classList.toggle('on',tab==='items');
+  tabNotesEl.classList.toggle('on',tab==='notes');
+  bookListEl.style.display=tab==='items'?'block':'none';
+  noteListEl.style.display=tab==='notes'?'block':'none';
+  if(tab==='notes')refreshNoteList();
+  refreshBook();
+}
+function openBook(){bookOpen=true;bookPanel.classList.add('open');switchTab(activeTab);}
 function closeBook(){bookOpen=false;bookPanel.classList.remove('open');}
 bookBtn.addEventListener('click',()=>bookOpen?closeBook():openBook());
 closeBookBtn.addEventListener('click',closeBook);
+tabItemsEl.addEventListener('click',()=>switchTab('items'));
+tabNotesEl.addEventListener('click',()=>switchTab('notes'));
+
+/* ---------- 漂流瓶纸条 ---------- */
+const notePanel=document.getElementById('notePanel');
+const noteTextEl=document.getElementById('noteText');
+const noteOkEl=document.getElementById('noteOk');
+function openNote(){
+  const idx=pickSentence();
+  noteTextEl.textContent=SENTENCES[idx];
+  if(!collectedNotes.includes(idx)){
+    collectedNotes.push(idx);
+    saveGame();
+  }
+  notePanel.classList.add('open');
+  noteOpen=true;
+}
+function closeNote(){noteOpen=false;notePanel.classList.remove('open');}
+noteOkEl.addEventListener('click',closeNote);
 
 /* ============================================================
-   声音分两层：
+   声音分三层：
    1) 海浪声：Web Audio 白噪音 + 低通滤波 + 慢速起伏（代码生成）
-   2) 背景音乐：bgm.mp3（和 index.html 放在同一个文件夹里，循环播放）
-   两者都在玩家第一次点击屏幕后才开始（浏览器自动播放限制），
-   音量默认调低，右下角小按钮统一静音/恢复
+   2) 背景音乐：bgm.mp3（和 index.html 放一起，循环播放）
+   3) 稀有物品的「叮」：合成的短正弦音
+   都在玩家第一次点击屏幕后才开始（浏览器自动播放限制），
+   右下角小按钮统一静音/恢复
    ============================================================ */
 let audioCtx=null,masterGain=null,muted=false;
 const muteBtnEl=document.getElementById('muteBtn');
@@ -376,6 +712,17 @@ function initAudio(){
     src.start();lfo.start();lfo2.start();
   }catch(e){/* 浏览器不支持就保持安静，不影响游戏 */}
 }
+function playChime(){
+  if(!audioCtx||muted)return;
+  try{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type='sine';o.frequency.value=880;
+    g.gain.setValueAtTime(0.14,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.35);
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+0.4);
+  }catch(e){}
+}
 document.addEventListener('pointerdown',()=>{
   initAudio();
   if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
@@ -390,11 +737,11 @@ muteBtnEl.addEventListener('click',()=>{
 
 /* ============================================================
    渲染循环：天空 → 沙滩 → 两层海浪 → 水线泡沫 →
-   波光 → 物品 → 特效，每帧全部重画
+   波光 → 物品（稀有带呼吸微光）→ 漂流瓶 → 特效
    ============================================================ */
 const speckles=[];
-for(let i=0;i<110;i++){
-  speckles.push({x:Math.random()*W,y:SAND_TOP+10+Math.random()*(H-SAND_TOP-20),
+for(let i=0;i<130;i++){
+  speckles.push({x:Math.random()*W,y:WET_TOP+10+Math.random()*(H-WET_TOP-20),
     r:0.8+Math.random()*1.5,a:0.05+Math.random()*0.07});
 }
 function seaLayer(y0,amp,k,phase,bot,hAmp,hK,hPhase,fill){
@@ -428,10 +775,12 @@ function draw(){
   ctx.fillStyle=g;ctx.fillRect(845,0,280,250);
   ctx.fillStyle='rgba(255,255,255,0.22)';
   ctx.fillRect(0,HORIZON-16,W,20);
-  /* 沙滩 */
-  g=ctx.createLinearGradient(0,SAND_TOP,0,H);
-  g.addColorStop(0,'#eee0c3');g.addColorStop(1,'#e2cfa9');
-  ctx.fillStyle=g;ctx.fillRect(0,SAND_TOP,W,H-SAND_TOP);
+  /* 沙滩（上半部分平时泡在水里，大退潮才露出来，颜色更湿更深） */
+  g=ctx.createLinearGradient(0,WET_TOP,0,H);
+  g.addColorStop(0,'#e4d0a8');g.addColorStop(0.4,'#eee0c3');g.addColorStop(1,'#e2cfa9');
+  ctx.fillStyle=g;ctx.fillRect(0,WET_TOP,W,H-WET_TOP);
+  ctx.fillStyle='rgba(105,125,135,0.10)';
+  ctx.fillRect(0,WET_TOP,W,548-WET_TOP);
   for(const p of speckles){
     ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
     ctx.fillStyle='rgba(140,115,80,'+p.a+')';ctx.fill();
@@ -458,19 +807,44 @@ function draw(){
     ctx.beginPath();ctx.moveTo(-s.len/2,0);ctx.lineTo(s.len/2,0);ctx.stroke();
     ctx.restore();
   }
-  /* 沙滩上的物品 */
+  /* 沙滩上的物品（少见/稀有带缓慢呼吸的微光） */
   for(const it of items){
     if(it.alpha<=0)continue;
+    const tp=typeInfo(it.typeId);
     ctx.save();
     ctx.globalAlpha=it.alpha;
     ctx.translate(it.x,it.y);
+    if(tp.rarity>=1){
+      const base=tp.rarity===2?0.25:0.14,amp=tp.rarity===2?0.10:0.06;
+      const a=base+amp*Math.sin(timeSec*Math.PI);
+      const col=tp.rarity===2?'255,236,180':'255,255,255';
+      const g2=ctx.createRadialGradient(0,0,4,0,0,34);
+      g2.addColorStop(0,'rgba('+col+','+a.toFixed(3)+')');
+      g2.addColorStop(1,'rgba('+col+',0)');
+      ctx.fillStyle=g2;
+      ctx.beginPath();ctx.arc(0,0,34,0,Math.PI*2);ctx.fill();
+    }
     ctx.save();
     ctx.scale(1,0.35);
     ctx.beginPath();ctx.arc(0,26,13,0,Math.PI*2);
     ctx.fillStyle='rgba(105,85,60,0.16)';ctx.fill();
     ctx.restore();
     ctx.rotate(it.rot);
-    typeDraw(it.typeId)(ctx,16);
+    tp.draw(ctx,16);
+    ctx.restore();
+  }
+  /* 漂流瓶 */
+  for(const b of bottles){
+    if(b.alpha<=0)continue;
+    ctx.save();
+    ctx.globalAlpha=b.alpha;
+    ctx.translate(b.x,b.y);
+    ctx.save();
+    ctx.scale(1,0.35);
+    ctx.beginPath();ctx.arc(0,26,13,0,Math.PI*2);
+    ctx.fillStyle='rgba(105,85,60,0.16)';ctx.fill();
+    ctx.restore();
+    drawBottle(ctx,15);
     ctx.restore();
   }
   /* 拾取特效：一圈涟漪 + 物品飘起淡出 */
@@ -490,17 +864,21 @@ function draw(){
   }
 }
 
-/* ---------- 潮汐条 UI 每帧刷新 ---------- */
+/* ---------- 潮汐条 UI 每帧刷新（含大退潮星星预告） ---------- */
 const tideMarkEl=document.getElementById('tideMark');
 const tideLabelEl=document.getElementById('tideLabel');
+const bigStarEl=document.getElementById('bigStar');
 let lastLabel='';
 function uiFrame(){
   tideMarkEl.style.left=(tideLevel()*100)+'%';
-  const tl=tideLevel();
+  const t=tideLevel();
+  const star=nextIsBig()&&!bigTideActive;
+  bigStarEl.style.display=star?'block':'none';
   let lbl;
-  if(canCollect())lbl='退潮 · 可以捡东西啦';
-  else if(tl>0.7)lbl='涨潮 · 等海水退去';
-  else lbl=(Math.sin(timeSec/TIDE_PERIOD*Math.PI*2+TIDE_PHASE)>0)?'涨潮中…':'退潮中…';
+  if(canCollect())lbl=bigTideActive?'大退潮 · 捡好东西啦':'退潮 · 可以捡东西啦';
+  else if(star)lbl='下一次是大退潮';
+  else if(t>0.7)lbl='涨潮 · 等海水退去';
+  else lbl=(Math.sin(timeSec/TIDE_PERIOD*Math.PI*2+TIDE_PHASE_VAL)>0)?'涨潮中…':'退潮中…';
   if(lbl!==lastLabel){tideLabelEl.textContent=lbl;lastLabel=lbl;}
 }
 
@@ -514,12 +892,30 @@ function loop(ts){
   uiFrame();
   requestAnimationFrame(loop);
 }
+loadSave();
 refreshBook();
-setTimeout(()=>showToast('退潮的时候，可以在沙滩上捡贝壳哦~'),1100);
+window.addEventListener('pagehide',saveGame);
+if(stats.visitDays>1)setTimeout(()=>showToast('第 '+stats.visitDays+' 次来看海'),600);
+setTimeout(()=>showToast('退潮的时候，可以在沙滩上捡贝壳哦~'),1900);
 requestAnimationFrame(loop);
 
-/* 调试用的只读入口（也方便自己改着玩） */
-window.__game={items,counts,tide:tideLevel,canCollect,bgm:bgmEl};
+/* 调试用的只读入口（也方便自己改着玩）：
+   __game.skip(秒数) 可以把游戏时间往前跳，用来快速看大退潮 */
+window.__game={
+  items,bottles,counts,
+  tide:tideLevel,canCollect,
+  big:()=>bigTideActive,
+  retreat:()=>retreatCount,
+  t:()=>timeSec,
+  skip:s=>{
+    const steps=Math.ceil(s/0.05);
+    for(let i=0;i<steps;i++){
+      timeSec+=Math.min(0.05,s-i*0.05);
+      checkTide();
+    }
+  },
+  bgm:bgmEl
+};
 </script>
 </body>
 </html>
