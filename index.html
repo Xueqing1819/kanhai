@@ -73,6 +73,13 @@ body{
 .noteLine{font-size:13px;color:#4d7a83;line-height:1.7;padding:4px 0;
   border-bottom:1px dashed rgba(125,180,189,.25)}
 .noteEmpty{font-size:13px;color:#9db8bc;text-align:center;padding:26px 0}
+/* ---------- 看海日记页 ---------- */
+.diaryRow{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;color:#4d7a83;padding:7px 2px;
+  border-bottom:1px dashed rgba(125,180,189,.25)}
+.diaryRow b{font-size:14px;color:#3c6a74;font-weight:600}
+.diarySum{text-align:center;font-size:13px;color:#8fa8ac;line-height:1.7;
+  padding:14px 6px 2px;font-style:italic}
 /* ---------- 漂流瓶纸条 ---------- */
 #notePanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-1deg);
   width:min(80%,420px);background:#fbf6ea;border-radius:14px;padding:18px 24px 20px;
@@ -101,12 +108,14 @@ body{
         <div id="bookTabs">
           <button class="tab on" id="tabItems">物品</button>
           <button class="tab" id="tabNotes">句子</button>
+          <button class="tab" id="tabDiary">日记</button>
         </div>
         <span id="bookCount">0/7</span>
         <button id="closeBook">×</button>
       </div>
       <div id="bookList"></div>
       <div id="noteList" style="display:none"></div>
+      <div id="diaryList" style="display:none"></div>
     </div>
     <div id="notePanel">
       <div id="noteTitle">· 漂流瓶 ·</div>
@@ -264,6 +273,92 @@ function drawCrab(c,s,t){
   c.beginPath();c.arc(-s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
   c.beginPath();c.arc(s*0.18,-s*0.3,s*0.09,0,Math.PI*2);c.fill();
 }
+
+/* ---------- v1.3：沙滩装饰的画法（纯 Canvas 几何，纯视觉） ---------- */
+function drawChime(){
+  /* 左上角一串小贝壳风铃，跟着海风轻轻摆 */
+  const swing=Math.sin(timeSec*0.9)*4;      // 整串摆 ±4°
+  ctx.strokeStyle='rgba(120,105,80,0.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(48,14);ctx.stroke();
+  ctx.save();
+  ctx.translate(48,14);
+  ctx.rotate(swing*Math.PI/180);
+  const lens=[30,42,56,38,48];
+  for(let i=0;i<5;i++){
+    ctx.save();
+    ctx.translate((i-2)*16,0);
+    ctx.rotate(Math.sin(timeSec*0.9+i*1.2)*0.07);
+    ctx.strokeStyle='rgba(150,130,100,0.7)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,lens[i]);ctx.stroke();
+    ctx.translate(0,lens[i]+5);
+    drawScallop(ctx,5+(i%3));
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function drawLight(){
+  /* 右下角礁石上的一串小灯，天黑以后自己亮起来 */
+  const lit=Math.max(0,(currentPal().night-0.2)/0.8);
+  ctx.beginPath();
+  ctx.moveTo(1128,668);
+  ctx.quadraticCurveTo(1128,632,1152,628);
+  ctx.quadraticCurveTo(1178,630,1186,652);
+  ctx.quadraticCurveTo(1190,666,1178,670);
+  ctx.lineTo(1136,670);
+  ctx.closePath();
+  ctx.fillStyle='#9a948a';ctx.fill();
+  ctx.strokeStyle='rgba(110,104,94,0.6)';ctx.lineWidth=1.5;ctx.stroke();
+  const pts=[[-30,-16],[-14,-26],[4,-28],[22,-22],[32,-8],[26,6],[6,12],[-16,10]];
+  ctx.strokeStyle='rgba(90,80,65,0.7)';ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(1158+pts[0][0],652+pts[0][1]);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(1158+pts[i][0],652+pts[i][1]);
+  ctx.stroke();
+  for(const p of pts){
+    const x=1158+p[0],y=652+p[1];
+    if(lit>0.03){
+      const g=ctx.createRadialGradient(x,y,0,x,y,10);
+      g.addColorStop(0,'rgba(255,214,140,'+(0.75*lit).toFixed(3)+')');
+      g.addColorStop(1,'rgba(255,214,140,0)');
+      ctx.fillStyle=g;
+      ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(x,y,2.2,0,Math.PI*2);
+    ctx.fillStyle=lit>0.03?'rgba(255,226,170,'+(0.55+0.45*lit).toFixed(3)+')':'rgba(210,202,188,0.95)';
+    ctx.fill();
+  }
+}
+function drawUmbrella(){
+  /* 沙滩右侧一把米白的伞：木杆、伞面、一小块安静的影子 */
+  ctx.save();
+  ctx.translate(1148,672);
+  ctx.scale(1,0.32);
+  ctx.beginPath();ctx.arc(26,0,56,0,Math.PI*2);
+  ctx.fillStyle='rgba(90,75,55,0.14)';ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle='#a98d68';ctx.lineWidth=5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(1148,672);ctx.lineTo(1136,536);ctx.stroke();
+  ctx.save();
+  ctx.translate(1136,536);
+  ctx.rotate(-0.18);
+  ctx.beginPath();
+  ctx.moveTo(-54,8);
+  ctx.quadraticCurveTo(0,-40,54,8);
+  ctx.quadraticCurveTo(36,20,18,14);
+  ctx.quadraticCurveTo(0,24,-18,14);
+  ctx.quadraticCurveTo(-36,20,-54,8);
+  ctx.closePath();
+  ctx.fillStyle='#efe9dc';ctx.fill();
+  ctx.strokeStyle='#cfc4ae';ctx.lineWidth=1.6;ctx.stroke();
+  ctx.strokeStyle='rgba(190,178,155,0.55)';ctx.lineWidth=1;
+  for(const fx of [-30,0,30]){
+    ctx.beginPath();
+    ctx.moveTo(fx,8-Math.abs(fx)*0.12);
+    ctx.quadraticCurveTo(fx*0.55,-14,0,-32);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 const RARITY=[
   {name:'常见',color:'#9aa7ab'},
   {name:'少见',color:'#6fa8c9'},
@@ -279,11 +374,15 @@ const TYPES=[
   {id:'coral',name:'珊瑚枝',draw:drawCoral,weight:3,rarity:2,wetOnly:true}
 ];
 function pickType(zone){
+  const band=timeBand();
   const pool=TYPES.filter(t=>zone==='wet'?true:!t.wetOnly);
   let total=0;
   const ws=pool.map(t=>{
     let w=t.weight;
     if(zone==='wet'&&t.id==='moon')w*=2;
+    /* v1.3：夜晚和黎明的月光螺更容易遇见，白天的海玻璃亮闪闪更好找 */
+    if(t.id==='moon'&&(band===2||band===3))w*=2;
+    if(t.id==='glass'&&band===0)w*=1.5;
     total+=w;return w;
   });
   let r=Math.random()*total;
@@ -369,11 +468,76 @@ const DELIVER_CHANCE=0.35;        // 涨潮期每次判定送出物品的概率
 const DELIVER_MIN=20,DELIVER_SPAN=20;  // 判定间隔 20~40 秒
 
 /* ============================================================
+   v1.3 昼夜循环：一个游戏日 = 现实 8 分钟。
+   四个时段各 2 分钟：白天 → 黄昏 → 夜晚 → 黎明 → 又是白天。
+   不存档，每次来都从白天开始；时段之间最后 20 秒平滑过渡。
+   ============================================================ */
+const DAY_LENGTH=480;
+let dayTime=0;
+function timeBand(){return Math.min(3,Math.floor(dayTime/120));}
+function smooth01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
+function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+/* 四个时段的画面关键帧 */
+const PALS=[
+  {skyT:'#d6eff0',skyB:'#eef8f1',seaB:'#a6dcd6',seaT:'#8ecacf',seaD:'#74b3c0',
+    sand1:'#e4d0a8',sand2:'#eee0c3',sand3:'#e2cfa9',waveCol:'#ffffff',
+    sunX:985,sunY:118,sunA:0.95,sunCol:'255,252,238',glowCol:'255,252,238',night:0},
+  {skyT:'#f0dcb8',skyB:'#f3c9b0',seaB:'#9dc3c6',seaT:'#8fb2c2',seaD:'#7898ab',
+    sand1:'#e3c9a2',sand2:'#ecd6b6',sand3:'#dfc39e',waveCol:'#fff4e4',
+    sunX:935,sunY:186,sunA:0.95,sunCol:'255,214,160',glowCol:'255,196,140',night:0.15},
+  {skyT:'#5f7a8c',skyB:'#8ba3b1',seaB:'#628b94',seaT:'#537787',seaD:'#446273',
+    sand1:'#a8a099',sand2:'#b4aca4',sand3:'#9e968f',waveCol:'#e8f0f6',
+    sunX:985,sunY:118,sunA:0,sunCol:'232,240,246',glowCol:'232,240,246',night:1},
+  {skyT:'#c5e2e4',skyB:'#e9f2ee',seaB:'#90c9c6',seaT:'#83b6c0',seaD:'#6e9fae',
+    sand1:'#d8d2c2',sand2:'#e6e2d6',sand3:'#d2ccc0',waveCol:'#fffcf6',
+    sunX:905,sunY:168,sunA:0.8,sunCol:'255,240,214',glowCol:'255,236,205',night:0.25}
+];
+PALS.forEach(p=>{
+  p._c={};
+  for(const k of ['skyT','skyB','seaB','seaT','seaD','sand1','sand2','sand3','waveCol'])
+    p._c[k]=hex2rgb(p[k]);
+});
+/* 当前这一帧的配色：时段尾 20 秒向下一时段慢慢过渡 */
+function currentPal(){
+  const band=timeBand();
+  const lt=dayTime-band*120;              // 本时段已走过的秒数
+  const a=PALS[band],b=PALS[(band+1)%4];
+  const t=lt>100?smooth01((lt-100)/20):0;
+  const mix=k=>'rgb('+a._c[k].map((v,i)=>Math.round(v+(b._c[k][i]-v)*t)).join(',')+')';
+  const mixN=(A,B)=>A+(B-A)*t;
+  const mixS=(A,B)=>{
+    const x=A.split(',').map(Number),y=B.split(',').map(Number);
+    return x.map((v,i)=>Math.round(v+(y[i]-v)*t)).join(',');
+  };
+  return {
+    band,
+    skyT:mix('skyT'),skyB:mix('skyB'),
+    seaB:mix('seaB'),seaT:mix('seaT'),seaD:mix('seaD'),
+    sand1:mix('sand1'),sand2:mix('sand2'),sand3:mix('sand3'),
+    waveCol:mix('waveCol'),
+    sunX:mixN(a.sunX,b.sunX),sunY:mixN(a.sunY,b.sunY),sunA:mixN(a.sunA,b.sunA),
+    sunCol:mixS(a.sunCol,b.sunCol),glowCol:mixS(a.glowCol,b.glowCol),
+    night:mixN(a.night,b.night)
+  };
+}
+/* 夜空的星星：12 颗，位置固定，天黑以后各自眨眼 */
+const stars=[];
+for(let i=0;i<12;i++){
+  stars.push({x:40+Math.random()*(W-80),y:16+Math.random()*(HORIZON-70),
+    r:0.8+Math.random()*0.9,ph:Math.random()*6.28});
+}
+
+/* ============================================================
    场景数据：物品、漂流瓶、波光、特效、统计
    ============================================================ */
 let items=[],bottles=[],mounds=[],effects=[],sparkles=[],sparkleTimer=0.8;
 let deliverAt=DELIVER_MIN+Math.random()*DELIVER_SPAN;  // 下一次海浪送礼判定时刻
 let crabSeen=0;   // 沙堆里挖出过的小螃蟹数（之后的朋友页要用）
+let dolphinSeen=0;  // 遇到海豚的次数（海豚机制之后的版本上线）
+/* v1.3 装饰：图鉴凑齐套装后出现在沙滩上（纯视觉，不挡路） */
+const DECOR_DEFS={chime:'贝壳风铃',light:'一盏小灯',umbrella:'岸边的伞'};
+let decorUnlocked=[];
+let decorAge={};   // 每件装饰解锁后的淡入计时
 const counts={};TYPES.forEach(t=>counts[t.id]=0);
 let collectedNotes=[];      // 已捡到的句子编号
 let stats={totalSec:0,pickedTotal:0,visitDays:1,lastVisit:''};
@@ -401,6 +565,8 @@ function loadSave(){
       collectedNotes=[...new Set(s.bottles)].filter(i=>Number.isInteger(i)&&i>=0&&i<SENTENCES.length);
     }
     if(s.friends&&typeof s.friends.crab==='number')crabSeen=s.friends.crab;
+    if(s.friends&&typeof s.friends.dolphin==='number')dolphinSeen=s.friends.dolphin;
+    if(Array.isArray(s.decor))decorUnlocked=s.decor.filter(d=>DECOR_DEFS[d]);
     if(s.stats){
       stats.pickedTotal=s.stats.pickedTotal||0;
       stats.totalSec=s.stats.totalSec||0;
@@ -421,8 +587,8 @@ function saveGame(){
       version:1,
       counts,
       bottles:collectedNotes,
-      friends:{crab:crabSeen,dolphin:0,seagull:0},
-      decor:[],
+      friends:{crab:crabSeen,dolphin:dolphinSeen,seagull:0},
+      decor:decorUnlocked,
       stats:{
         totalSec:Math.floor(stats.totalSec),
         pickedTotal:stats.pickedTotal,
@@ -442,7 +608,8 @@ function spawnBatch(n,baseDelay,zone){
       y=zone==='wet'?475+Math.random()*90:580+Math.random()*115;
       ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
         &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80)
-        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>80*80);
+        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>80*80)
+        &&decorFree(x,y);
     }
     items.push({typeId:pickType(zone),x,y,alpha:0,rot:(Math.random()-0.5)*0.6,
       appearAt:timeSec+baseDelay+Math.random()*1.2,wash:false});
@@ -454,7 +621,8 @@ function spawnBottle(baseDelay){
     x=90+Math.random()*(W-180);
     y=555+Math.random()*85;
     ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
-      &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80);
+      &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80)
+      &&decorFree(x,y);
   }
   bottles.push({x,y,alpha:0,appearAt:timeSec+baseDelay+Math.random()*1.0,wash:false});
 }
@@ -473,7 +641,8 @@ function spawnMounds(n,baseDelay){
       y=580+Math.random()*115;
       ok=items.every(it=>(it.x-x)*(it.x-x)+(it.y-y)*(it.y-y)>80*80)
         &&bottles.every(b=>(b.x-x)*(b.x-x)+(b.y-y)*(b.y-y)>80*80)
-        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>90*90);
+        &&mounds.every(m=>(m.x-x)*(m.x-x)+(m.y-y)*(m.y-y)>90*90)
+        &&decorFree(x,y);
     }
     mounds.push({x,y,alpha:0,appearAt:timeSec+baseDelay+Math.random()*1.2,
       dug:false,digT:0,settled:false,result:null,stone:false,
@@ -516,13 +685,41 @@ function spawnDelivery(){
     ty=580+Math.random()*115;
     ok=items.every(it=>(it.x-tx)*(it.x-tx)+(it.y-ty)*(it.y-ty)>80*80)
       &&bottles.every(b=>(b.x-tx)*(b.x-tx)+(b.y-ty)*(b.y-ty)>80*80)
-      &&mounds.every(m=>(m.x-tx)*(m.x-tx)+(m.y-ty)*(m.y-ty)>80*80);
+      &&mounds.every(m=>(m.x-tx)*(m.x-tx)+(m.y-ty)*(m.y-ty)>80*80)
+      &&decorFree(tx,ty);
   }
   const y0=Math.min(waterlineY()-26,ty-40);   // 从水线里随浪出来
   const x0=tx+(Math.random()-0.5)*70;
   items.push({typeId:pickGiftType(),x:x0,y:y0,alpha:0.9,
     rot:(Math.random()-0.5)*0.4,appearAt:timeSec,wash:false,
     delivery:{x0,y0,tx,ty,t:0,dur:1.5,done:false}});
+}
+
+/* ---------- v1.3：图鉴套装 → 沙滩装饰 ----------
+   贝壳风铃：扇贝/蛤蜊/海螺/月光螺都捡到过（挂在左上角）
+   一盏小灯：海玻璃攒够 5 块（右下礁石上，夜里自动亮）
+   岸边的伞：图鉴 7 种全部点亮（撑在沙滩右侧）          ---------- */
+function checkDecor(){
+  const news=[];
+  if(!decorUnlocked.includes('chime')
+    &&counts.scallop>0&&counts.clam>0&&counts.conch>0&&counts.moon>0)news.push('chime');
+  if(!decorUnlocked.includes('light')&&counts.glass>=5)news.push('light');
+  if(!decorUnlocked.includes('umbrella')&&TYPES.every(t=>counts[t.id]>0))news.push('umbrella');
+  for(const id of news){
+    decorUnlocked.push(id);
+    decorAge[id]=0;
+    /* 晚一点点再提示，别盖住刚捡到东西的那句话 */
+    setTimeout(()=>showToast('解锁了新装饰：'+DECOR_DEFS[id]),900);
+  }
+  if(news.length)saveGame();
+}
+/* 装饰解锁后的淡入进度（0~1，2 秒显形） */
+function decA(id){return Math.min(1,(decorAge[id]===undefined?2:decorAge[id])/2);}
+/* 刷物品时避开已经摆了装饰的位置 */
+function decorFree(x,y){
+  if(decorUnlocked.includes('umbrella')&&(x-1148)*(x-1148)+(y-600)*(y-600)<75*75)return false;
+  if(decorUnlocked.includes('light')&&(x-1158)*(x-1158)+(y-640)*(y-640)<55*55)return false;
+  return true;
 }
 
 /* ---------- 潮汐状态切换（进入/离开退潮窗口，含大退潮） ---------- */
@@ -563,6 +760,7 @@ function checkTide(){
 
 function update(dt){
   timeSec+=dt;
+  dayTime=(dayTime+dt)%DAY_LENGTH;   // v1.3：昼夜慢慢往前走
   stats.totalSec+=dt;
   checkTide();
   const low=canCollect();
@@ -642,12 +840,15 @@ function update(dt){
   if(sparkleTimer<=0){
     sparkleTimer=2+Math.random()*1.4;
     sparkles.push({x:80+Math.random()*(W-160),y:315+Math.random()*175,
-      len:8+Math.random()*10,t:0,dur:0.9+Math.random()*0.5,tilt:(Math.random()-0.5)*0.6});
+      len:(8+Math.random()*10)*(timeBand()===2?1.5:1),   // 夜里的波光拖得长一点
+      t:0,dur:0.9+Math.random()*0.5,tilt:(Math.random()-0.5)*0.6});
   }
   for(const s of sparkles)s.t+=dt;
   sparkles=sparkles.filter(s=>s.t<s.dur);
   for(const e of effects)e.t+=dt;
   effects=effects.filter(e=>e.t<e.dur);
+  /* v1.3：新装饰解锁后 2 秒里慢慢显形 */
+  for(const id in decorAge){if(decorAge[id]<2)decorAge[id]+=dt;}
   /* 自动存档：每 5 秒一次 */
   saveTimer-=dt;
   if(saveTimer<=0){saveTimer=5;saveGame();}
@@ -704,6 +905,7 @@ function handleTap(x,y){
     else showToast('捡到了：'+tp.name);
     refreshBook();
     saveGame();
+    checkDecor();   // v1.3：看看是不是凑齐了哪套装
     return;
   }
   if(y>waterlineY()+6&&!canCollect()&&timeSec-lastHint>2){
@@ -736,6 +938,8 @@ const bookListEl=document.getElementById('bookList');
 const noteListEl=document.getElementById('noteList');
 const tabItemsEl=document.getElementById('tabItems');
 const tabNotesEl=document.getElementById('tabNotes');
+const tabDiaryEl=document.getElementById('tabDiary');
+const diaryListEl=document.getElementById('diaryList');
 let activeTab='items';
 const entries={};
 (function buildBook(){
@@ -787,7 +991,8 @@ function refreshBook(){
   }
   miniCountEl.textContent=lit+'/'+TYPES.length;
   if(activeTab==='items')bookCountEl.textContent=lit+'/'+TYPES.length;
-  else bookCountEl.textContent=collectedNotes.length+'/'+SENTENCES.length;
+  else if(activeTab==='notes')bookCountEl.textContent=collectedNotes.length+'/'+SENTENCES.length;
+  else bookCountEl.textContent='';
 }
 function refreshNoteList(){
   noteListEl.innerHTML='';
@@ -802,13 +1007,41 @@ function refreshNoteList(){
     noteListEl.append(d);
   }
 }
+/* ---------- v1.3：看海日记（图鉴第三个页签，慢慢攒数字） ---------- */
+function refreshDiary(){
+  diaryListEl.innerHTML='';
+  const mins=Math.floor(stats.totalSec/60);
+  const total=TYPES.reduce((sum,t)=>sum+counts[t.id],0);
+  const rows=[
+    ['累计看了',mins+' 分钟'],
+    ['一共捡到',total+' 件小东西'],
+    ['漂流瓶句子',collectedNotes.length+' / '+SENTENCES.length+' 句'],
+    ['遇到海豚',dolphinSeen>0?dolphinSeen+' 次':'还没遇见过'],
+    ['连续来看海',stats.visitDays+' 天']
+  ];
+  for(const r of rows){
+    const d=document.createElement('div');d.className='diaryRow';
+    const k=document.createElement('span');k.textContent=r[0];
+    const v=document.createElement('b');v.textContent=r[1];
+    d.append(k,v);diaryListEl.append(d);
+  }
+  const sum=document.createElement('div');sum.className='diarySum';
+  sum.textContent=mins<10?'刚到海边，慢慢来。'
+    :mins<30?'这片海已经陪你一会儿了。'
+    :mins<60?'你大概是喜欢这片海的。'
+    :'这里快成了你的秘密海岸。';
+  diaryListEl.append(sum);
+}
 function switchTab(tab){
   activeTab=tab;
   tabItemsEl.classList.toggle('on',tab==='items');
   tabNotesEl.classList.toggle('on',tab==='notes');
+  tabDiaryEl.classList.toggle('on',tab==='diary');
   bookListEl.style.display=tab==='items'?'block':'none';
   noteListEl.style.display=tab==='notes'?'block':'none';
+  diaryListEl.style.display=tab==='diary'?'block':'none';
   if(tab==='notes')refreshNoteList();
+  if(tab==='diary')refreshDiary();
   refreshBook();
 }
 function openBook(){bookOpen=true;bookPanel.classList.add('open');switchTab(activeTab);}
@@ -817,6 +1050,7 @@ bookBtn.addEventListener('click',()=>bookOpen?closeBook():openBook());
 closeBookBtn.addEventListener('click',closeBook);
 tabItemsEl.addEventListener('click',()=>switchTab('items'));
 tabNotesEl.addEventListener('click',()=>switchTab('notes'));
+tabDiaryEl.addEventListener('click',()=>switchTab('diary'));
 
 /* ---------- 漂流瓶纸条 ---------- */
 const notePanel=document.getElementById('notePanel');
@@ -937,45 +1171,101 @@ function foamLine(y0,extra,color,lw){
 }
 function draw(){
   ctx.setTransform(sx,0,0,sy,0,0);
-  /* 天空与太阳光晕 */
+  /* v1.3：这一帧的昼夜配色 */
+  const P=currentPal();
+  const moonA=Math.max(0,(P.night-0.2)/0.8);   // 月亮 / 灯串的可见度
+  /* 天空（随昼夜变化） */
   let g=ctx.createLinearGradient(0,0,0,HORIZON);
-  g.addColorStop(0,'#d6eff0');g.addColorStop(1,'#eef8f1');
+  g.addColorStop(0,P.skyT);g.addColorStop(1,P.skyB);
   ctx.fillStyle=g;ctx.fillRect(0,0,W,HORIZON);
-  g=ctx.createRadialGradient(985,118,8,985,118,115);
-  g.addColorStop(0,'rgba(255,252,238,0.95)');g.addColorStop(1,'rgba(255,252,238,0)');
-  ctx.fillStyle=g;ctx.fillRect(845,0,280,250);
-  ctx.fillStyle='rgba(255,255,255,0.22)';
+  /* 星星：天黑才一颗颗亮起来，各自轻轻眨 */
+  if(P.night>0.02){
+    for(const st of stars){
+      const a=P.night*(0.35+0.4*Math.sin(timeSec*0.8+st.ph));
+      if(a<=0.02)continue;
+      ctx.beginPath();ctx.arc(st.x,st.y,st.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(240,246,252,'+a.toFixed(3)+')';ctx.fill();
+    }
+  }
+  /* 太阳：白天高挂，黄昏变得橙橙的、慢慢沉下去 */
+  if(P.sunA>0.02){
+    g=ctx.createRadialGradient(P.sunX,P.sunY,8,P.sunX,P.sunY,115);
+    g.addColorStop(0,'rgba('+P.glowCol+','+P.sunA.toFixed(3)+')');
+    g.addColorStop(1,'rgba('+P.glowCol+',0)');
+    ctx.fillStyle=g;ctx.fillRect(P.sunX-140,Math.max(0,P.sunY-140),280,280);
+    ctx.beginPath();ctx.arc(P.sunX,P.sunY,13,0,Math.PI*2);
+    ctx.fillStyle='rgba('+P.sunCol+','+P.sunA.toFixed(3)+')';ctx.fill();
+  }
+  /* 月亮：天真正黑下来才升起，清清淡淡的满月 */
+  if(moonA>0.02){
+    const mx=985,my=102;
+    g=ctx.createRadialGradient(mx,my,6,mx,my,64);
+    g.addColorStop(0,'rgba(226,236,244,'+(0.5*moonA).toFixed(3)+')');
+    g.addColorStop(1,'rgba(226,236,244,0)');
+    ctx.fillStyle=g;ctx.fillRect(mx-64,my-64,128,128);
+    ctx.beginPath();ctx.arc(mx,my,16,0,Math.PI*2);
+    ctx.fillStyle='rgba(238,244,248,'+moonA.toFixed(3)+')';ctx.fill();
+    ctx.strokeStyle='rgba(190,210,224,'+(0.6*moonA).toFixed(3)+')';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='rgba(198,214,226,'+(0.5*moonA).toFixed(3)+')';
+    ctx.beginPath();ctx.arc(mx-5,my-3,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(mx+4,my+5,2.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(mx+6,my-6,1.6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,'+(0.22*(1-P.night*0.7)).toFixed(3)+')';
   ctx.fillRect(0,HORIZON-16,W,20);
   /* 沙滩（上半部分平时泡在水里，大退潮才露出来，颜色更湿更深） */
   g=ctx.createLinearGradient(0,WET_TOP,0,H);
-  g.addColorStop(0,'#e4d0a8');g.addColorStop(0.4,'#eee0c3');g.addColorStop(1,'#e2cfa9');
+  g.addColorStop(0,P.sand1);g.addColorStop(0.4,P.sand2);g.addColorStop(1,P.sand3);
   ctx.fillStyle=g;ctx.fillRect(0,WET_TOP,W,H-WET_TOP);
-  ctx.fillStyle='rgba(105,125,135,0.10)';
+  ctx.fillStyle='rgba(105,125,135,'+(0.10+0.06*P.night).toFixed(3)+')';
   ctx.fillRect(0,WET_TOP,W,548-WET_TOP);
   for(const p of speckles){
     ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(140,115,80,'+p.a+')';ctx.fill();
+    ctx.fillStyle='rgba(140,115,80,'+(p.a*(1-0.35*P.night)).toFixed(3)+')';ctx.fill();
   }
   const wl=waterlineY();
   /* 两层海浪：后层慢而缓，前层快一点、颜色更深 */
-  seaLayer(256,6,Math.PI*2/340,timeSec*0.5,wl,0,0,0,'#a6dcd6');
+  seaLayer(256,6,Math.PI*2/340,timeSec*0.5,wl,0,0,0,P.seaB);
   const fg=ctx.createLinearGradient(0,288,0,wl+6);
-  fg.addColorStop(0,'#8ecacf');fg.addColorStop(1,'#74b3c0');
+  fg.addColorStop(0,P.seaT);fg.addColorStop(1,P.seaD);
   seaLayer(290,11,Math.PI*2/230,-timeSec*1.1,wl,3,Math.PI*2/95,timeSec*1.6,fg);
+  /* 月光落在海面上：一条条淡淡的反光，越近越宽 */
+  if(moonA>0.02){
+    for(let i=0;i<12;i++){
+      const ly=HORIZON+10+i*17;
+      if(ly>wl-4)break;
+      const w2=16+i*4;
+      const ox=Math.sin(timeSec*0.6+i*1.3)*4;
+      ctx.beginPath();
+      ctx.moveTo(985-w2/2+ox,ly);ctx.lineTo(985+w2/2+ox,ly);
+      ctx.strokeStyle='rgba(230,240,248,'+(moonA*0.18*(1-i/13)).toFixed(4)+')';
+      ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();
+    }
+  }
   /* 湿沙带 + 水线泡沫 */
   g=ctx.createLinearGradient(0,wl,0,wl+34);
   g.addColorStop(0,'rgba(95,120,130,0.20)');g.addColorStop(1,'rgba(95,120,130,0)');
   ctx.fillStyle=g;ctx.fillRect(0,wl,W,34);
-  foamLine(wl,0,'rgba(255,255,255,0.55)',3);
-  foamLine(wl+7,2.1,'rgba(255,255,255,0.25)',2);
+  foamLine(wl,0,'rgba(255,255,255,'+(0.55*(1-0.35*P.night)).toFixed(3)+')',3);
+  foamLine(wl+7,2.1,'rgba(255,255,255,'+(0.25*(1-0.35*P.night)).toFixed(3)+')',2);
   /* 波光 */
   for(const s of sparkles){
     const p=s.t/s.dur;
     ctx.save();
     ctx.globalAlpha=Math.sin(Math.PI*p)*0.65;
     ctx.translate(s.x,s.y);ctx.rotate(s.tilt);
-    ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.lineCap='round';
+    ctx.strokeStyle=P.waveCol;ctx.lineWidth=2;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(-s.len/2,0);ctx.lineTo(s.len/2,0);ctx.stroke();
+    ctx.restore();
+  }
+  /* v1.3 装饰：凑齐套装后悄悄出现在沙滩和角落里 */
+  for(const id of decorUnlocked){
+    const a=decA(id);
+    if(a<=0)continue;
+    ctx.save();ctx.globalAlpha=a;
+    if(id==='chime')drawChime();
+    else if(id==='light')drawLight();
+    else if(id==='umbrella')drawUmbrella();
     ctx.restore();
   }
   /* 沙滩上的物品（少见/稀有带缓慢呼吸的微光；送礼上岸的跟一道泡沫弧） */
@@ -1195,6 +1485,12 @@ window.__game={
   deliverAt:()=>deliverAt,
   mound:(n)=>spawnMounds(n||1,0),
   deliver:()=>spawnDelivery(),
+  day:()=>dayTime,
+  setDay:v=>{dayTime=((v%DAY_LENGTH)+DAY_LENGTH)%DAY_LENGTH;},
+  night:()=>currentPal().night,
+  decor:()=>[...decorUnlocked],
+  check:checkDecor,
+  pick:pickType,
   skip:s=>{
     const steps=Math.ceil(s/0.05);
     for(let i=0;i<steps;i++){
